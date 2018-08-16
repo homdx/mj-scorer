@@ -1,0 +1,17 @@
+.hg*
+.spyproject/
+__pycache__/
+subsetting-fonts.txt
+src/mahjongscorer.ini
+src/images/icon1.ai
+src/NanumGothic-Regular.ttf
+mahjongscorer.ini
+builder/release.sh
+builder/release.cmd
+builder/install.cmd
+builder/androidcerts.tar.bz2
+animated-gif.txt
+src/NanumGothic-Bold.ttf
+server/api/v0/index.py
+myapp.profile
+mj.sqlite

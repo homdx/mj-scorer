@@ -17,7 +17,7 @@ class ScoreRow(GridLayout):
     row_type = StringProperty('deltas')
 
     @staticmethod
-    def format_data(value, data_type='baredeltas', japanese_number_format=False):
+    def format_data(value, data_type, japanese_number_format=False):
 
         if data_type == 'headers':
             return '[b]%s[/b]' % value
@@ -38,15 +38,6 @@ class ScoreRow(GridLayout):
                 return '[b][color=#AFA]▲%d[sub]00[/sub][/color][/b]' % -value
             # western, negative total
             return '[b][color=#F88]%d[sub]00[/sub][/color][/b]' % value
-
-
-        if data_type == 'baredeltas':
-            if value == 0:
-                return '0'
-            elif value > 0:
-                return '+%.1f' % (value / 10)
-            else:
-                return '%.1f' % (value / 10)
 
         if data_type == 'deltas':
             if is_string:
@@ -113,12 +104,14 @@ class MjScoreTable(ScrollView):
 
     __selected_row = NumericProperty(0)
 
+
     def add_row(self, data_row, new_section):
         new_row = ScoreRowSectionStart() if new_section else ScoreRow()
         new_row.data_items = data_row
         new_row.data_type = 'deltas'
         self.ids.scoresection_hands.add_widget(new_row)
         return self.update_scores()
+
 
     def delete_row(self, row_number = -1):
         ''' Remove a row from the score table.
@@ -131,8 +124,10 @@ class MjScoreTable(ScrollView):
             'Removed score table row:' + str(row_to_remove.data_items))
         rows.remove_widget(row_to_remove)
 
+
     def on_touch(self, ):
         App.get_running_app().log('TODO MjScoreTable.on_touch', Log.DEBUG)
+
 
     def reset(self):
         self.ids.scoresection_hands.clear_widgets()
@@ -142,14 +137,17 @@ class MjScoreTable(ScrollView):
         for row in ids:
             self.ids[row].data_items[1:] = [''] * 4
 
+
     def select_row(self, ):
         App.get_running_app().log('TODO MjScoreTable.select_row', Log.DEBUG)
+
 
     def update_scores(self):
         players = App.get_running_app().players
         for idx in range(4):
             self.ids.running_totals.data_items[idx + 1] = players[idx].score
         return self.ids.running_totals.data_items[1:]
+
 
     @staticmethod
     def get_kv():

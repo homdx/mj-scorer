@@ -15,3 +15,8 @@ src/NanumGothic-Bold.ttf
 server/api/v0/index.py
 myapp.profile
 mj.sqlite
+server/config.py
+server/discord-token.txt
+server/discord-auth.json
+server/httpd.conf
+server/google-token.txt

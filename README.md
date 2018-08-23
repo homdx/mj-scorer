@@ -9,17 +9,21 @@ Right now, it's not possible to get this in the Android Play Store, because of t
 
 ### Prerequisites
 
-[NanumGothic Bold & Regular fonts](https://fonts.google.com/specimen/Nanum+Gothic) (for the wind characters. Two special fonts just so that I can have the four Japanese wind characters. There must be a better way. Still, it's a nice-enough typeface.
+[NanumGothic Bold & Regular fonts](https://fonts.google.com/specimen/Nanum+Gothic) (for the wind characters. Two special fonts just so that I can have the four Japanese wind characters. There must be a better way. Still, it's a nice-enough typeface.)
 
 ```
 pip install requests kivy.deps.sdl2 kivy.deps.angle kivy.deps.glew kivy.deps.gstreamer kivy
 ```
 
+### On the server
+
+On the server: `pip install flask authlib loginpass
+You'll need a config.py file with your own API keys. Here's [the temmplate](https://github.com/authlib/loginpass/blob/master/flask_example/config.py)
 
 ### Installing
 
 Getting the development environment working was hard. I've included the dockerfile. I needed to tweak 
-`/opt/buildozer/buildozer/targets/android.py` - my version in the respository.
+`/opt/buildozer/buildozer/targets/android.py` - my version in the repository. This dockerfile may not work for you. I'm still not sure how I got it working. Just got lucky, I think.
 
 
 ## Running the tests
@@ -35,7 +39,7 @@ So, there aren't any automated tests or anything. Just use it and try to break i
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the Affero GPL v3 Licence - see the [LICENSE](LICENSE) file for details
 
 
 ## Acknowledgments

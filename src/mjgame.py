@@ -57,6 +57,11 @@ class MjGameStatus(BoxLayout):
         self.__end_of_hand()
 
 
+    def erase(self):
+        self.__game_dict['current'] = {}
+        self.sync()
+
+
     def fill_games_table(self):
         app_root = App.get_running_app()
         table = app_root.root.ids.games_table
@@ -88,7 +93,6 @@ class MjGameStatus(BoxLayout):
                 players[3].wind = lastwind
                 app_root.animate_winddiscs('clockwise')
 
-
             self.__score_table.delete_row(-1)
             self.__game_dict['current']['hands'].pop()
             self.__hand_count = len(self.__game_dict['current']['hands']) - 1
@@ -96,6 +100,23 @@ class MjGameStatus(BoxLayout):
             self.__score_table.update_scores()
             app_root.popup_menu.ids['forgetlasthandbutton'].disabled = self.__hand_count == 1
         return True
+
+
+    def game_summary(self):
+        description = datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' ' + (
+            self.ids.hand_number.text if self.in_progress else '(ended)'
+            ) + ': '
+
+        app_root = App.get_running_app()
+        for idx in range(4):
+            description += '%s(%s), '% (
+                self.__game_dict['current']['players'][idx],
+                '%.1f' % ((
+                    app_root.players[idx].score if self.in_progress else
+                    self.__game_dict['current']['final_score'][idx]
+                    ) / 10)
+            )
+        return description
 
 
     def load(self, game):
@@ -113,6 +134,7 @@ class MjGameStatus(BoxLayout):
         except:
             # TODO failed to load game from db
             pass
+
 
     def next_hand(self):
         self.__end_of_hand()
@@ -175,13 +197,12 @@ class MjGameStatus(BoxLayout):
         return False
 
 
-    def save(self, results):
-        ''' save the full game to the database of completed games '''
+    def save(self, results={}):
+        ''' save the game to the games database'''
         self.__game_dict['current'].update(results)
         self.__game_dict['current']['in_progress'] = self.in_progress
-        self.__db.save_game(self.__game_dict['current'])
-        self.__game_dict['current'] = {}
-        self.sync()
+        description = self.game_summary()
+        self.__db.save_game(self.__game_dict['current'], description)
 
 
     def start(self, ruleset=None, names=None):
@@ -366,10 +387,10 @@ class MjGameStatus(BoxLayout):
 
 <MjGameStatus>:
     orientation: 'vertical'
-    size_hint: 0.15, 0.15
+    size_hint: 0.15, 0.2
 
     Label:
-        font_size: '30sp'
+        font_size: '40sp'
         id: hand_number
         text: app.winds[root.round_wind_index] + ' ' + str(root.dealership) + '-' + str(root.hand_redeals)
 
@@ -378,7 +399,7 @@ class MjGameStatus(BoxLayout):
         orientation: 'horizontal'
 
         SmallRiichiStick:
-            size_hint: 0.3, 1
+            size_hint: 0.3, 0.8
 
         ScaleLabel:
             font_size: '30sp'
@@ -389,7 +410,7 @@ class MjGameStatus(BoxLayout):
             text: ''
 
         HonbaStick:
-            size_hint: 0.3, 1
+            size_hint: 0.3, 0.8
 
         ScaleLabel:
             font_size: '30sp'

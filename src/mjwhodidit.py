@@ -28,11 +28,14 @@ class Draw():
         self.__popup.set_labels("Who is in tenpai?")
         self.__popup.group_playerbuttons(False) # allow multiple tenpai
 
+
     def cancelled(self):
         self.__popup.dismiss()
 
+
     def go(self):
         self.__popup.open()
+
 
     def when_done(self):
         out = {
@@ -58,8 +61,10 @@ class Pao():
         self.__popup.set_labels("Who is liable for the yakuman?")
         self.__popup.group_playerbuttons(True) # only one liable
 
+
     def cancelled(self):
         self.__popup.dismiss()
+
 
     def go(self, callback):
         self.__result = App.get_running_app().root.ids.handscreen.result
@@ -67,11 +72,13 @@ class Pao():
         self.__callback = callback
         self.__popup.open()
 
+
     def when_ready(self):
         self.__popup.min_players_selected = 1
         self.__popup.max_players_selected = 1
         self.__popup.player_buttons[self.__result['winners']].ids.button.disabled = True
         self.__popup.ids.whodiditdone.disabled = True
+
 
     def when_done(self):
         self.__result['liable'] = self.__popup.get_selected_players()[0]
@@ -91,16 +98,20 @@ class Chombo():
         self.__popup.when_done = self.when_done
         self.__popup.when_ready = self.when_ready
 
+
     def cancelled(self):
         self.__popup.dismiss()
 
+
     def go(self):
         self.__popup.open()
+
 
     def when_ready(self):
         self.__popup.min_players_selected = 1
         self.__popup.max_players_selected = 1
         self.__popup.ids.whodiditdone.disabled = True
+
 
     def when_done(self):
         out = {
@@ -122,8 +133,10 @@ class MultipleRons():
         self.__popup = Factory.Mjwhodidit()
         self.__popup.when_cancelled = self.cancelled
 
+
     def cancelled(self):
         self.__popup.dismiss()
+
 
     def go(self):
         app_root = App.get_running_app()
@@ -141,11 +154,13 @@ class MultipleRons():
         self.__popup.when_done = self.got_loser
         self.__popup.open()
 
+
     def get_loser(self):
         self.__popup.group_playerbuttons(True) # only one loser
         self.__popup.ids.whodiditdone.disabled = True
         self.__popup.min_players_selected = 1
         self.__popup.max_players_selected = 1
+
 
     def got_loser(self):
         self.result['losers'] = self.__popup.get_selected_players()[0]
@@ -156,11 +171,13 @@ class MultipleRons():
         self.__popup.when_done = self.got_winners
         Clock.schedule_once(lambda dt: self.__popup.open(), 0.3)
 
+
     def get_winners(self):
         self.__popup.ids.whodiditdone.disabled = True
         self.__popup.min_players_selected = 2
         self.__popup.max_players_selected = 3
         self.__popup.player_buttons[self.result['losers']].ids.button.disabled = True
+
 
     def got_winners(self):
         selected = self.__popup.get_selected_players()
@@ -180,12 +197,14 @@ class MultipleRons():
         self.result['winners'] = self.winners.copy()
         self.get_one_score()
 
+
     def get_one_score(self):
         app_root = App.get_running_app()
         app_root.root.ids.handscreen.result = {'winners': self.winners[-1]} # needed if we get pao
         app_root.set_headline(self.__get_headline())
         app_root.hanfubutton_callback = self.got_one_score
         app_root.screen_switch('hanfubuttons')
+
 
     def got_one_score(self, score):
         app_root = App.get_running_app()
@@ -216,6 +235,7 @@ class MultipleRons():
 
         return app_root.hand_end(self.result)
 
+
     def __get_headline(self):
         players = App.get_running_app().players
         winner = self.winners[-1]
@@ -234,6 +254,7 @@ class MultipleRons():
             players[winner].wind,
             players[self.result['losers']].wind
             )
+
 
 class Mjwhodidit(Popup):
 
@@ -256,6 +277,7 @@ class Mjwhodidit(Popup):
 
         Mjwhodidit.instances.append(self)
 
+
     @classmethod
     def check_children(cls, node, of_type):
         out = []
@@ -264,6 +286,7 @@ class Mjwhodidit(Popup):
                 out.insert(0, child)
             out = cls.check_children(child, of_type) + out
         return out
+
 
     def get_selected_players(self):
 
@@ -275,9 +298,11 @@ class Mjwhodidit(Popup):
 
         return selected
 
+
     def group_playerbuttons(self, to_group):
         for button in self.player_buttons:
             button.ids.button.group = 'a' if to_group else None
+
 
     def reset_playerbuttons(self):
 
@@ -291,9 +316,11 @@ class Mjwhodidit(Popup):
         if self.when_ready is not None:
             self.when_ready()
 
+
     def set_labels(self, text):
         for label in self.player_buttons:
             label.prompt = text
+
 
     def whodidit_check(self):
         '''
@@ -310,6 +337,7 @@ class Mjwhodidit(Popup):
                 <= number_of_buttons_down
                 <= self.max_players_selected)
         return False
+
 
     @staticmethod
     def get_kv():

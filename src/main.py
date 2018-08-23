@@ -13,12 +13,13 @@ pip install kivy.deps.sdl2 kivy.deps.angle kivy.deps.glew kivy.deps.gstreamer ki
 """
 
 # the following line is used by the builder. Don't mess with the spacing!
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
-from kivy.config import Config
+
+from kivy.config import Config # pylint: disable=wrong-import-order,ungrouped-imports
 # These config settings MUST be done before any other modules are loaded
-Config.set('postproc', 'double_tap_distance', '100')
-Config.set('postproc', 'double_tap_time', '650')
+Config.set('postproc', 'double_tap_distance', '100') # pylint: disable=wrong-import-position
+Config.set('postproc', 'double_tap_time', '650') # pylint: disable=wrong-import-position
 
 import cProfile
 from functools import partial
@@ -41,7 +42,7 @@ from kivy.uix.settings import SettingsWithTabbedPanel
 
 # components supplied with this app
 
-from mjcomponents import Mjcomponents
+from mjcomponents import Mjcomponents, SettingPassword
 from mjenums import Log, Result
 from mjgame import MjGameStatus
 from mjscoretable import MjScoreTable
@@ -118,7 +119,7 @@ class MahjongScorer(App):
         self.yesno_popup.callback = self.game.resume
         self.yesno_popup.question = '[b]There is an unfinished game: do you want to resume playing it?[/b]'
         self.yesno_popup.true_text = 'YES, resume game'
-        self.yesno_popup.false_text = 'NO, discard the incomplete game and start a new one'
+        self.yesno_popup.false_text = 'NO, start a new game'
         self.yesno_popup.open()
 
 
@@ -162,10 +163,13 @@ class MahjongScorer(App):
             'japanese_numbers': False,
             'japanese_winds': True,
             'profiling': False,
+            'api_store': '',
+            'api_password': '',
         })
 
 
     def build_settings(self, settings):
+        settings.register_type('password', SettingPassword)
         settings.add_json_panel('', self.config, data=settings_json)
 
 
@@ -312,6 +316,7 @@ class MahjongScorer(App):
         self.screen_switch('scoresheet')
         self.toggle_buttons()
         scoretable.scroll_to(results.scoretable_final_totals)
+        self.game.erase()
 
 
     def game_end_userchoice(self, was_draw, game_end):
@@ -435,7 +440,8 @@ class MahjongScorer(App):
         return False
 
 
-    def key_input(self, window, key, scancode, codepoint, modifier):
+    @staticmethod
+    def key_input(window, key, scancode, codepoint, modifier):
         if key == 27:
             return True  # override the default behaviour; the key now does nothing
         return False
@@ -544,9 +550,9 @@ class MahjongScorer(App):
         ''' end app, so end profiler and dump its stats for later analysis '''
         # https://docs.python.org/3.6/library/profile.html
         self.game.sync()
+        self.game.save()
         self.__end_profiling()
         Window.close()
-        return True
 
 
     def randomise_seating(self):
@@ -621,7 +627,9 @@ class MahjongScorer(App):
             self.popup_menu.ids[each_widget].disabled = self.game.in_progress
 
         self.popup_menu.ids.multipleronbutton.disabled = \
-            not self.game.in_progress or not self.game.rules.multiple_rons
+            not self.game.in_progress \
+            or self.game.rules is None \
+            or not self.game.rules.multiple_rons
 
 
     def who_chomboed(self):

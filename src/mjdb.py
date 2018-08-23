@@ -10,13 +10,13 @@ import sqlite3
 
 from kivy.app import App
 
-from mjscoretable import ScoreRow
-from mjenums import Log
-
 class Mjdb():
     ''' database handling for archived, completed games '''
 
     __log = None
+    cursor = None
+    db = None
+
 
     def db_close(self):
         self.db.commit()
@@ -50,7 +50,8 @@ class Mjdb():
 
 
     def list_games(self):
-        self.cursor.execute("SELECT global_id, description, json FROM Games ORDER BY description DESC;")
+        self.cursor.execute(
+            "SELECT global_id, description, json FROM Games ORDER BY description DESC;")
         return self.cursor.fetchall()
 
 
@@ -58,19 +59,14 @@ class Mjdb():
         self.cursor.execute("SELECT json FROM Games WHERE global_id=?", [global_id])
         return loads(self.cursor.fetchone()[0], encoding='utf8')
 
+
     def load_game_by_desc(self, desc):
         self.cursor.execute("SELECT json FROM Games WHERE description=?", [desc])
         return loads(self.cursor.fetchone()[0], encoding='utf8')
 
-    def save_game(self, json):
+
+    def save_game(self, json, description):
         global_id = json['game_id']
-        description = '%s: ' % json['start']
-        for idx in range(4):
-            description += '%s(%s), '% (
-                json['players'][idx],
-                ScoreRow.format_data(json['final_score'][idx])
-            )
-        print(description)
 
         query = "UPDATE Games SET description=?, json=? WHERE global_id=?" \
             if self.does_game_exist(global_id) else \

@@ -78,12 +78,12 @@ BoxLayout:
                     pos_hint: {'top': 1, 'left': 0}
                     size_hint: 1, 0.9
                 Button:
-                    text: 'Back'
+                    text: 'Current\\nGame'
                     size_hint: 0.2, 0.1
                     pos_hint: {'bottom': 0, 'left': 0}
                     on_release: app.screen_back()
                 Button:
-                    text: 'New Game'
+                    text: 'New\\nGame'
                     id: new_game_button
                     size_hint: 0.2, 0.1
                     disabled: True

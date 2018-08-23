@@ -1,6 +1,6 @@
 copy C:\library\Dropbox\source\android\ZAPScorer\src\*.py D:\ZAPS\scorer\src\
 
-docker run --rm -it --privileged -v d:\ZAPS\scorer\src:/src -v buildozer:/home/kivy applysci/buildozer /src/debug.sh
+docker run --rm -it --privileged -v d:\ZAPS\scorer:/src -v buildozer:/home/kivy applysci/buildozer /src/debug.sh
 
 
 rem how to run a command as root in a running container:

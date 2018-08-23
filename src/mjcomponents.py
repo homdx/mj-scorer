@@ -6,6 +6,7 @@ from kivy.app import App
 from kivy.animation import Animation
 from kivy.core.text import Label as CoreLabel
 from kivy.properties import BooleanProperty, ListProperty, NumericProperty
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -13,8 +14,8 @@ from kivy.uix.label import Label
 from kivy.uix.recyclegridlayout import RecycleGridLayout
 from kivy.uix.recycleview.views import RecycleDataViewBehavior
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
-from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.screenmanager import Screen
+from kivy.uix.settings import SettingString
 from kivy.uix.widget import Widget
 
 from mjenums import Log, Result
@@ -27,14 +28,17 @@ class SelectableRecycleGridLayout(FocusBehavior, LayoutSelectionBehavior,
 
 class SelectableButton(RecycleDataViewBehavior, Button):
     ''' Add selection support to the Button '''
+
     index = None
     selected = BooleanProperty(False)
     selectable = BooleanProperty(True)
+
 
     def refresh_view_attrs(self, rv, index, data):
         ''' Catch and handle the view changes '''
         self.index = index
         return super(SelectableButton, self).refresh_view_attrs(rv, index, data)
+
 
     def on_touch_down(self, touch):
         ''' Add selection on touch down '''
@@ -44,9 +48,11 @@ class SelectableButton(RecycleDataViewBehavior, Button):
             return self.parent.select_with_touch(self.index, touch)
         return False
 
+
     def apply_selection(self, rv, index, is_selected):
         ''' Respond to the selection of items in the view. '''
         self.selected = is_selected
+
 
     def on_press(self):
         App.get_running_app().game.load_game_by_desc(self.text)
@@ -64,13 +70,16 @@ class DeltaScoreOverlay(Widget):
 
 
 class MJTable(BoxLayout):
+
     cols = NumericProperty(0)
     col_headings = ListProperty([])
+
 
     def on_col_headings(self, *args):
         for idx in range(self.cols):
             # kivy reverses expected order of children
             self.ids.header.children[self.cols - 1 - idx].text = self.col_headings[idx]
+
 
     def on_cols(self, *args):
         for idx in range(self.cols):
@@ -82,6 +91,7 @@ class RiichiStick(Button):
     def __init__(self, **kwargs):
         super(RiichiStick, self).__init__(**kwargs)
         App.get_running_app().riichi_stick_refs.append(self.proxy_ref)
+
 
     def de_riichi(self, really_deriichi):
         app_root = App.get_running_app()
@@ -102,6 +112,7 @@ class RiichiStick(Button):
             app_root.log(
                 Log.INFO,
                 '%s decided not to de-riichi, %s' % (self.player.wind, self.player.player_name))
+
 
     def pressed(self):
         app_root = App.get_running_app()
@@ -130,13 +141,17 @@ class RiichiStick(Button):
 
 
 class PlayerPosition(AnchorLayout):
+
     def __init__(self, **kwargs):
+
         super(PlayerPosition, self).__init__(**kwargs)
         App.get_running_app().players.append(self.proxy_ref)
 
 
 class HandScreen(Screen):
+
     result = None
+
 
     def __get_score(self, msg, result):
         self.result = result
@@ -146,12 +161,14 @@ class HandScreen(Screen):
         app_root.hanfubutton_callback = self.got_score
         app_root.screen_switch('hanfubuttons')
 
+
     def got_score(self, result):
         if isinstance(result, dict):
             self.result.update(result)
         else:
             self.result['score'] = result
         App.get_running_app().hand_end(self.result)
+
 
     def on_touch_up(self, touch):
 
@@ -212,15 +229,37 @@ class HandScreen(Screen):
 
 
 class WindDisc(Widget):
+
     def __init__(self, **kwargs):
         super(WindDisc, self).__init__(**kwargs)
         App.get_running_app().wind_discs.append(self.proxy_ref)
+
 
     def animate(self):
         (Animation(visible=1)
          + Animation(progress=1-self.progress)
          + Animation(visible=0)
         ).start(self)
+
+
+class PasswordLabel(Label):
+    ''' Label for passwords in kivy settings dialog. '''
+    pass
+
+
+class SettingPassword(SettingString):
+    ''' Controller for passwords in kivy settings dialog. '''
+
+    def _create_popup(self, instance):
+        super(SettingPassword, self)._create_popup(instance)
+        self.textinput.password = True
+
+
+    def add_widget(self, widget, *largs):
+        if self.content is None:
+            super(SettingString, self).add_widget(widget, *largs)
+        if isinstance(widget, PasswordLabel):
+            return self.content.add_widget(widget, *largs)
 
 
 class Mjcomponents():
@@ -236,12 +275,19 @@ class Mjcomponents():
         return '''
 
 #:import ScoreRow mjscoretable.ScoreRow
+#:import stopTouchApp kivy.base.stopTouchApp
+
+<SettingPassword>
+	PasswordLabel:
+		text: '(stored)' if root.value else '(empty)'
+		pos: root.pos
 
 <ModalView>:
     background_color: 0, 0, 0, 1
     border: []
     auto_dismiss: False
     title: ''
+
 
 <Label>:
     font_name: 'NanumGothic'
@@ -439,9 +485,9 @@ class Mjcomponents():
 
     canvas:
         Color:
-            rgba: .5, .5, .5, 1 - self.visible
+            rgba: .9, .9, .9, 1 - self.visible
         Line:
-            width: 1
+            width:
             rounded_rectangle: self.x, self.y, self.width, self.height -2 , self.height / 2 - 1
         Line:
             width: 1
@@ -567,7 +613,8 @@ class Mjcomponents():
             on_release: root.dismiss() or app.show_help()
         Button:
             text: 'Exit app'
-            on_release: app.stop()
+            on_release: stopTouchApp()
+
 
 <Helptext@FloatLayout>:
     Label:

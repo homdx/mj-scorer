@@ -35,7 +35,7 @@ class ScoreRow(GridLayout):
                 return '[b]0[/b]'
             if japanese_number_format:
                 # japanese, negative total
-                return '[b][color=#AFA]▲%d[sub]00[/sub][/color][/b]' % -value
+                return '[b][color=#F88]▲%d[sub]00[/sub][/color][/b]' % -value
             # western, negative total
             return '[b][color=#F88]%d[sub]00[/sub][/color][/b]' % value
 
@@ -50,9 +50,9 @@ class ScoreRow(GridLayout):
             if japanese_number_format:
                 if value > 0:
                     # japanese, positive delta
-                    return '[color=#F88]+%d[sub]00[/sub][/color]' % value
+                    return '[color=#AFA]+%d[sub]00[/sub][/color]' % value
                 # Japanese, negative delta
-                return '[color=#AFA]▲%d[sub]00[/sub][/color]' % -value
+                return '[color=#F88]▲%d[sub]00[/sub][/color]' % -value
 
             # Western number style
             if value > 0:
@@ -75,9 +75,9 @@ class ScoreRow(GridLayout):
             if japanese_number_format:
                 if value > 0:
                     # japanese, positive final delta
-                    return '[color=#F88]+%.1f[/color]' % value
+                    return '[color=#AFA]+%.1f[/color]' % value
                 # japanese, negative final delta
-                return '[color=#AFA]▲%.1f[/color]' % -value
+                return '[color=#F88]▲%.1f[/color]' % -value
 
             # Western number style
             if value > 0:

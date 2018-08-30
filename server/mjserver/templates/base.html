@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    {% block head %}
+    <!--link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"-->
+    <title>{% block title %}{% endblock %} - ZAPS Mahjong Scorer</title>
+    {% endblock %}
+    <link rel="icon" href="/static/icon1.png">
+    <style>
+    a[href], a[href]:visited, a[href]:active {
+        color: #FFB;
+        border: 3px outset #333;
+        display: inline-block;
+        text-decoration: none;
+    }
+    a[href]:active {
+        border: 3px inset;
+    }
+    body {
+        background-color: #111;
+        color: #dfd
+    }
+    </style>
+  </head>
+  <body>
+    <nav>
+        {% if user is defined and user.is_authenticated %}
+            <b>Hi, {{ user.username }}!</b> | 
+            <a href="{{ url_for('user', user_id=current_user.id) }}">Profile</a> | 
+            <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}">Login</a>
+        {% endif %}
+        | <a href='/privacy'>Privacy & GDPR</a>
+    </nav>
+     {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <ul>
+            {% for message in messages %}
+            <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    {% endwith %}
+    <div id="content">{% block content %}{% endblock %}</div>
+    <div id="footer">
+      {% block footer %}
+      &copy; 2018 by <a href="http://mj.bacchant.es/">ZAPS</a>.
+      {% endblock %}
+    </div>
+  </body>
+</html>

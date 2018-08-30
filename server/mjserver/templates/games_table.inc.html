@@ -1,0 +1,21 @@
+<table>
+    <thead>
+        <tr>
+        <th>Game</th>
+        <th>p1</th>
+        <th>p2</th>
+        <th>p3</th>
+        <th>p4</th>
+    </thead>
+    <tbody>
+        {% for game in games %}
+            <tr>
+                <td><a href='/game/{{ game.id }}'>{{ game.description }}</a></td>
+                <td>{{ game.p1 }}</td>
+                <td>{{ game.p2 }}</td>
+                <td>{{ game.p3 }}</td>
+                <td>{{ game.p4 }}</td>
+            </td>
+        {% endfor %}
+    </tbody>
+</table>

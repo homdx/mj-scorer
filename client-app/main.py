@@ -1,19 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-
 ZAPS Mahjong Scorer, on Android; Kivy + Python
-
 @author: ZAPS
-
-東 南 西 北
-
-https://kivy.org/docs/installation/installation-windows.html
-pip install kivy.deps.sdl2 kivy.deps.angle kivy.deps.glew kivy.deps.gstreamer kivy
 
 """
 
 # the following line is used by the builder. Don't mess with the spacing!
-__version__ = '0.2.1'
+__version__ = '0.3.0'
 
 
 from kivy.config import Config # pylint: disable=wrong-import-order,ungrouped-imports

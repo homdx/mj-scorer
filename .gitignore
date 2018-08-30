@@ -20,3 +20,7 @@ server/discord-token.txt
 server/discord-auth.json
 server/httpd.conf
 server/google-token.txt
+.to-ignore/
+server/mjserver/config.py
+server/migrations/
+*.apk

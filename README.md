@@ -17,7 +17,8 @@ pip install requests kivy.deps.sdl2 kivy.deps.angle kivy.deps.glew kivy.deps.gst
 
 ### On the server
 
-On the server: `pip install flask authlib loginpass
+On the server: `pip install flask sqlalchemy authlib loginpass flask_login flask_migrate flask_sqlalchemy flask_wtf wtforms`
+
 You'll need a config.py file with your own API keys. Here's [the temmplate](https://github.com/authlib/loginpass/blob/master/flask_example/config.py)
 
 ### Installing
@@ -28,7 +29,7 @@ Getting the development environment working was hard. I've included the dockerfi
 
 ## Running the tests
 
-So, there aren't any automated tests or anything. Just use it and try to break it. I'm really not a fan of test-driven development.
+So, there aren't any automated tests or anything. Just use it and try to break it. I'm really not a fan of test-driven development; but if you want to write tests for this and submit pull requests, please do go ahead.
 
 
 ## Built With
@@ -46,3 +47,4 @@ This project is licensed under the Affero GPL v3 Licence - see the [LICENSE](LIC
 
 * Thanks to Gemma Sakamoto for setting out her very stringent but reasonable requirements for a scoring app. Without that, this app wouldn't exist.
 * Thanks to https://github.com/diegodukao/docker-python3-kivy-buildozer for the work on getting a build environment working. Without that, this app couldn't exist.
+* Thanks to Mighel Grinberg for the [https://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-i-hello-world](flask mega tutorial). Without that, I would not have got to grips with Flask.

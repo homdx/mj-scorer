@@ -582,7 +582,7 @@ class Mjcomponents():
             on_release: root.dismiss() or app.screen_switch('gameslist')
         Button:
             id: newgamebutton
-            text: 'New game'
+            text: 'New\\ngame'
             disabled: True
             on_release: root.dismiss() or app.ask_names()
         Button:

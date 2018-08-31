@@ -31,12 +31,16 @@
 <ul>
 <li>v0.3 (in progress):
     <ul>
-        <li>server authentication by ID
-        <li>Enable upload/download of games in progress for later resumption from same or different device
-        <li>store game (finished or in progress) on server, in a named store protected by a user-chosen password
-        <li>get list of games from server in a named store, once store's password is entered
-        <li>retrieve a particular game from server
+        <li>sqlalchemy database on server
         <li>Negative scores are now red and positive scores are green, in both Japanese and Western formats
+        <li>register players on website
+        <li class='TODO'>server authentication by token within app
+        <li class='TODO'>get list of registered players into app from website
+        <li class='TODO'>enable app to give user list of registered players for a new game
+        <li class='TODO'>Enable upload/download of games in progress for later resumption from same or different device
+        <li class='TODO'>store game (finished or in progress) on server, in a named store protected by a user-chosen password
+        <li class='TODO'>get list of games from server for a defined group, once that group's password is entered
+        <li class='TODO'>enable app to  retrieve a particular game in progress from server
     </ul>
 <li>v0.2.1:
     <ul>
@@ -53,32 +57,33 @@
         <li>load score table from completed game in local game db
         <li>ask for confirmation before finishing game
     </ul>
-<li>v0.1.5:
-    <ul>
-        <li>"Forget last hand" now works;
-        <li>Add setting for English winds vs Japanese winds;
-        <li>Developer tool: implemented profiler boolean setting
-    </ul>
 </ul>
 <h2># TODO (in descending priority)</h2>
 <ul>
         <li><h3>For v0.4:</h3>
         <li>delete game from local game db
-        <li>have a server-based list of IDs to choose players from, that mobile client can add to
+        <li>Add new registered player in app, register them on the server by email address
         <li><h3>For v?</h3>
         <li>tournament and league mode on server
         <li>Add iPhone version
 </ul>
 <h3>Should these happen? Feedback welcome!</h3>
 <ul>
+    <li>?User registration via social login?
     <li>?optional enhanced scorecard like UKRC Open, with counter column, riichi bank, etc?
     <li>?add game timer?
 </ul>
 <h2>Older updates</h2>
 <ul>
-    <li>v0.1.4: user can now set background colour from a choice of dark backgrounds
+    <li>v0.1.5:
+        <ul>
+            <li>"Forget last hand" now works;
+            <li>Add setting for English winds vs Japanese winds;
+            <li>Developer tool: implemented profiler boolean setting
+        </ul>
+    <li>v0.1.4: ✓ user can now set background colour from a choice of dark backgrounds
     (no light background available yet)
-    <li>v0.1.3: first alpha release
+    <li>v0.1.3: ✓ first alpha release
 </ul>
 </section>
 {% endblock %}

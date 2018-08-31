@@ -24,3 +24,4 @@ server/google-token.txt
 server/mjserver/config.py
 server/migrations/
 *.apk
+server/mjserver/salt.py

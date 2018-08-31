@@ -1,0 +1,4 @@
+# Copy to salt.py and add the salt string below.
+# Identical salt.py file must be in the client app too.
+
+HASH_SALT = b'' # long string

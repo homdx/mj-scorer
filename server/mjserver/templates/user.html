@@ -1,6 +1,28 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>User: {{ user.username }}</h1>
-    {% include "games_table.inc.html" %}
+    <h1>User: {{ profiled.username }}</h1>
+
+    {% if profiled.usersgames|length == 0 -%}
+        <p>No games for this user on file yet</p>
+    {%- else -%}
+    <table class='sortable'>
+        <thead>
+            <tr>
+            <th>Game</th>
+            <th>Placement</th>
+            <th>Score</th>
+        </thead>
+        <tbody>
+            {% for game in profiled.usersgames %}
+                <tr>
+                    <td><a href='{{ url_for('view_game', game_id=game.game_id) }}'>{{ game.game.description }}</a></td>
+                    <td>{{ game.place }}</td>
+                    <td>{{ game.score }}</td>
+                </td>
+            {% endfor %}
+        </tbody>
+    </table>
+    {%- endif %}
+    
 {% endblock %}

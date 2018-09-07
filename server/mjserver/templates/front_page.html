@@ -29,27 +29,61 @@
 <section>
 <h2>Recent updates</h2>
 <ul>
-<li>v0.3 (in progress):
+<li>v0.2.3:
     <ul>
-        <li>sqlalchemy database on server
+        <li>provide a scrollable list of local incomplete games to resume from
+        <li>Tag games in the local database as live/ended, for easy searches
+    </ul>
+<li>v0.2.2:
+    <ul>
         <li>Negative scores are now red and positive scores are green, in both Japanese and Western formats
-        <li>register players on website
-        <li class='TODO'>server authentication by token within app
-        <li class='TODO'>get list of registered players into app from website
-        <li class='TODO'>enable app to give user list of registered players for a new game
-        <li class='TODO'>Enable upload/download of games in progress for later resumption from same or different device
-        <li class='TODO'>store game (finished or in progress) on server, in a named store protected by a user-chosen password
-        <li class='TODO'>get list of games from server for a defined group, once that group's password is entered
-        <li class='TODO'>enable app to  retrieve a particular game in progress from server
+        <li>add option to skip the randomisation of seating
+        <li>end-of hand display of scores is now consistent with tenhou: riichi stick values are included for the winner, but not for losers who have riichi'd.
     </ul>
-<li>v0.2.1:
-    <ul>
-        <li>Save multiple unfinished games to database
-        <li>EMA starting points are 30k, not 25k
-        <li>Clearer riichi stick silhouette
-        <li>add in_progress status to game db description string
-    </ul>
-<li>v0.2.0:
+</ul>
+<hr>
+<h2># TODO (in descending priority)</h2>
+<ul>
+    <li>v0.3 (in progress):
+        <ul>
+            <li>sqlalchemy database on server
+            <li>register players on website (live, but db gets wiped regularly, so don't register yet!)
+            <li class='TODO'>server authentication by token within app
+            <li class='TODO'>get list of registered players into app from website
+            <li class='TODO'>enable app to give user list of registered players for a new game
+            <li class='TODO'>Enable upload/download of games in progress for later resumption from same or different device
+            <li class='TODO'>store game (finished or in progress) on server, in a named store protected by a user-chosen password
+            <li class='TODO'>get list of games from server for a defined group, once that group's password is entered
+            <li class='TODO'>enable app to retrieve a particular game in progress from server
+        </ul>
+    <li><h3>v0.4:</h3>
+        <ul>
+            <li class='TODO'>delete game from local game db
+            <li class='TODO'>Add new registered player in app, register them on the server by email address
+        </ul>
+    <li><h3>v???</h3>
+        <ul>
+            <li class='TODO'>tournament and league mode on server
+            <li class='TODO'>Add iPhone version
+        </ul>
+    <li><h3>Should these happen? Feedback welcome!</h3>
+        <ul>
+            <li class='TODO'>?User registration via social login?
+            <li class='TODO'>?optional enhanced scorecard like UKRC Open, with counter column, riichi bank, etc?
+            <li class='TODO'>?add game timer?
+        </ul>
+</ul>
+<hr>
+<h2>Older updates</h2>
+<ul>
+    <li>v0.2.1:
+        <ul>
+            <li>Save multiple unfinished games to database
+            <li>EMA starting points are 30k, not 25k
+            <li>Clearer riichi stick silhouette
+            <li>add in_progress status to game db description string
+        </ul>
+    <li>v0.2.0:
     <ul>
         <li>Restore any game in progress, on startup, after asking the user;
         <li>Wind rotation is correct now, when last hand is forgotten
@@ -57,24 +91,6 @@
         <li>load score table from completed game in local game db
         <li>ask for confirmation before finishing game
     </ul>
-</ul>
-<h2># TODO (in descending priority)</h2>
-<ul>
-        <li><h3>For v0.4:</h3>
-        <li>delete game from local game db
-        <li>Add new registered player in app, register them on the server by email address
-        <li><h3>For v?</h3>
-        <li>tournament and league mode on server
-        <li>Add iPhone version
-</ul>
-<h3>Should these happen? Feedback welcome!</h3>
-<ul>
-    <li>?User registration via social login?
-    <li>?optional enhanced scorecard like UKRC Open, with counter column, riichi bank, etc?
-    <li>?add game timer?
-</ul>
-<h2>Older updates</h2>
-<ul>
     <li>v0.1.5:
         <ul>
             <li>"Forget last hand" now works;
@@ -85,5 +101,6 @@
     (no light background available yet)
     <li>v0.1.3: ✓ first alpha release
 </ul>
+<hr>
 </section>
 {% endblock %}

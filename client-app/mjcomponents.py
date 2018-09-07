@@ -15,7 +15,7 @@ from kivy.uix.recyclegridlayout import RecycleGridLayout
 from kivy.uix.recycleview.views import RecycleDataViewBehavior
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
 from kivy.uix.screenmanager import Screen
-from kivy.uix.settings import SettingString
+from kivy.uix.settings import SettingItem, SettingString
 from kivy.uix.widget import Widget
 
 from mjenums import Log, Result
@@ -29,6 +29,7 @@ class SelectableRecycleGridLayout(FocusBehavior, LayoutSelectionBehavior,
 class SelectableButton(RecycleDataViewBehavior, Button):
     ''' Add selection support to the Button '''
 
+    callback = None
     index = None
     selected = BooleanProperty(False)
     selectable = BooleanProperty(True)
@@ -55,7 +56,11 @@ class SelectableButton(RecycleDataViewBehavior, Button):
 
 
     def on_press(self):
-        App.get_running_app().game.load_game_by_desc(self.text)
+        self.__do_callback(self.index)
+
+    @classmethod
+    def __do_callback(cls, result):
+        cls.callback(result)
 
 
 class ScaleLabel(Label):
@@ -242,6 +247,29 @@ class WindDisc(Widget):
         ).start(self)
 
 
+class SettingButton(SettingItem):
+
+    def __init__(self, **kwargs):
+        buttons = kwargs['buttons'].copy()
+        del kwargs['buttons']
+        super(SettingButton, self).__init__(**kwargs)
+        self.register_event_type('on_release')
+        for one_button in buttons:
+            obj = Button(text=one_button['title'], font_size='15sp')
+            obj.ID = one_button['id']
+            self.add_widget(obj)
+            obj.bind(on_release=self.on_pressed)
+
+    def set_value(self, section, key, value):
+        # we don't want set_value to do anything as this isn't a real setting
+        pass
+
+    @staticmethod
+    def on_pressed(instance):
+        import webbrowser
+        webbrowser.open(url='https://mj.bacchant.es/get-token', new=1)
+
+
 class PasswordLabel(Label):
     ''' Label for passwords in kivy settings dialog. '''
     pass
@@ -262,6 +290,14 @@ class SettingPassword(SettingString):
             return self.content.add_widget(widget, *largs)
 
 
+    def get_value(self):
+        pass
+
+
+    def set_value(self):
+        pass
+
+
 class Mjcomponents():
 
     @staticmethod
@@ -277,10 +313,11 @@ class Mjcomponents():
 #:import ScoreRow mjscoretable.ScoreRow
 #:import stopTouchApp kivy.base.stopTouchApp
 
-<SettingPassword>
-	PasswordLabel:
-		text: '(stored)' if root.value else '(empty)'
-		pos: root.pos
+
+<Label>:
+    font_name: 'NanumGothic'
+    color: 0.9, 0.9, 0.9, 1.0
+
 
 <ModalView>:
     background_color: 0, 0, 0, 1
@@ -289,9 +326,13 @@ class Mjcomponents():
     title: ''
 
 
-<Label>:
-    font_name: 'NanumGothic'
-    color: 0.9, 0.9, 0.9, 1.0
+<Button>:
+    halign: 'center'
+
+<SettingPassword>
+	PasswordLabel:
+		text: '(stored)' if root.value else '(empty)'
+		pos: root.pos
 
 
 <SelectableButton>:
@@ -320,7 +361,7 @@ class Mjcomponents():
 
     RecycleView:
         viewclass: 'SelectableButton'
-        data: [{'text': str(x)} for x in root.data_items]
+        data: [{'text': str(x[1])} for x in root.data_items]
         SelectableRecycleGridLayout:
             spacing: 0, 10
             cols: root.cols
@@ -407,7 +448,6 @@ class Mjcomponents():
             Label:
                 halign: 'center'
                 valign: 'center'
-                #pos_hint: {'top': 1, 'left': 0.1}
                 size_hint_y: 0.3
                 text_size: self.parent.size
                 markup: True
@@ -415,7 +455,6 @@ class Mjcomponents():
             Button:
                 halign: 'center'
                 valign: 'center'
-                #pos_hint: {'top': 0.64, 'left': 0.1}
                 size_hint_y: 0.3
                 text_size: self.parent.size
                 markup: True
@@ -424,7 +463,6 @@ class Mjcomponents():
             Button:
                 halign: 'center'
                 valign: 'center'
-                #pos_hint: {'top': 0.32}
                 size_hint_y: 0.3
                 text_size: self.parent.size
                 markup: True
@@ -487,7 +525,7 @@ class Mjcomponents():
         Color:
             rgba: .9, .9, .9, 1 - self.visible
         Line:
-            width:
+            width: 1
             rounded_rectangle: self.x, self.y, self.width, self.height -2 , self.height / 2 - 1
         Line:
             width: 1
@@ -573,13 +611,12 @@ class Mjcomponents():
     GridLayout:
         orientation: 'vertical'
         cols: 2
-        rows: 5
+        rows: 6
         Button:
             text: 'Close Menu'
             on_release: root.dismiss()
-        Button:
-            text: 'Load game \\n from db'
-            on_release: root.dismiss() or app.screen_switch('gameslist')
+        Label:
+            text: ''
         Button:
             id: newgamebutton
             text: 'New\\ngame'
@@ -609,6 +646,16 @@ class Mjcomponents():
             text: 'Settings'
             on_release: root.dismiss() or app.open_settings()
         Button:
+            id: ongoinggamesbutton
+            text: 'Ongoing\\ngames'
+            on_release: root.dismiss() or app.game.show_games(True)
+            disabled: True
+        Button:
+            id: completedgamesbutton
+            text: 'Completed\\nGames'
+            on_release: root.dismiss() or app.game.show_games(False)
+            disabled: True
+        Button:
             text: 'Help'
             on_release: root.dismiss() or app.show_help()
         Button:
@@ -632,8 +679,7 @@ class Mjcomponents():
     title: 'Help'
     auto_dismiss: False
 
-    Helptext
-
+    Helptext:
         AnchorLayout:
             anchor_x: 'center'
             anchor_y: 'bottom'
@@ -643,5 +689,4 @@ class Mjcomponents():
                 bold: True
                 text: 'Close'
                 on_release: root.dismiss()
-
 '''

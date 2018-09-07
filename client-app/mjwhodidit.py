@@ -367,6 +367,7 @@ class Mjwhodidit(Popup):
         ScaleLabel:
             font_size: '24sp'
             text: root.prompt
+            height: self.texture_size[1]
 
 
 <Mjwhodidit>:

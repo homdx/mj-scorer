@@ -6,7 +6,7 @@ ZAPS Mahjong Scorer, on Android; Kivy + Python
 """
 
 # the following line is used by the builder. Don't mess with the spacing!
-__version__ = '0.3.0'
+__version__ = '0.2.3'
 
 
 from kivy.config import Config # pylint: disable=wrong-import-order,ungrouped-imports
@@ -16,6 +16,7 @@ Config.set('postproc', 'double_tap_time', '650') # pylint: disable=wrong-import-
 
 import cProfile
 from functools import partial
+from hashlib import md5
 from math import ceil, fabs, copysign
 from pathlib import Path
 import random # for randomising seat placement
@@ -35,13 +36,15 @@ from kivy.uix.settings import SettingsWithTabbedPanel
 
 # components supplied with this app
 
-from mjcomponents import Mjcomponents, SettingPassword
+from mjcomponents import Mjcomponents, SettingButton, SettingPassword
 from mjenums import Log, Result
 from mjgame import MjGameStatus
+from mjplayers import PlayerNames
 from mjscoretable import MjScoreTable
 from mjsettings import settings_json
 from mjwhodidit import Chombo, Draw, Mjwhodidit, MultipleRons, Pao
 from mjui import Mjui
+from salt import HASH_SALT
 
 kivy.require("1.10.0")
 
@@ -61,11 +64,13 @@ class MahjongScorer(App):
     __popup_help = None
     __profile = None
 
+    auth_token = None
     bg_colour = ListProperty([0, 0, 0, 1])
     delta_overlays = ListProperty([])
     deltascore_popup = None
     deriichi_popup = None
     game = None
+    games_list = ListProperty([])
     hanfubutton_callback = None
     japanese_numbers = BooleanProperty(False)
     players = ListProperty([])
@@ -108,12 +113,10 @@ class MahjongScorer(App):
 
 
     def ask_to_resume(self, *args):
-        self.yesno_popup.angle = 0
-        self.yesno_popup.callback = self.game.resume
-        self.yesno_popup.question = '[b]There is an unfinished game: do you want to resume playing it?[/b]'
-        self.yesno_popup.true_text = 'YES, resume game'
-        self.yesno_popup.false_text = 'NO, start a new game'
-        self.yesno_popup.open()
+        nGames = self.game.resumption_possible()
+        self.screen_switch('gameslist' if nGames > 1 else 'playernames')
+        for each_widget in ['ongoinggamesbutton', 'completedgamesbutton']:
+            self.popup_menu.ids[each_widget].disabled = False
 
 
     def build(self):
@@ -127,6 +130,7 @@ class MahjongScorer(App):
         Builder.load_string(MjGameStatus.get_kv())
         Builder.load_string(MjScoreTable.get_kv())
         Builder.load_string(Mjwhodidit.get_kv())
+        Builder.load_string(PlayerNames.get_kv())
 
         root = Builder.load_string(Mjui.get_kv())
 
@@ -140,10 +144,9 @@ class MahjongScorer(App):
 
         self.japanese_numbers = self.config.getboolean('main', 'japanese_numbers')
         self.set_wind_labels(self.config.getboolean('main', 'japanese_winds'))
+        self.auth_token = self.config.get('main', 'auth_token')
 
         self.bg_colour = self.__get_gb_color(self.config.get('main', 'bg_colour'))
-        if self.game.resumption_possible():
-            Clock.schedule_once(self.ask_to_resume)
         return root
 
 
@@ -152,17 +155,23 @@ class MahjongScorer(App):
             'installation_id': str(time()).replace('.', '').replace(',', '')[-10:],
             'use_server': False,
             'bg_colour': 'black',
-            'api_path': 'https://mj.bacchant.es/api/v0/',
             'japanese_numbers': False,
             'japanese_winds': True,
+            'auth_token': '',
+            'auth_browser': '',
+        })
+        config.setdefaults('unused', {
+            'api_path': 'https://mj.bacchant.es/api/v0/',
             'profiling': False,
             'api_store': '',
             'api_password': '',
+            'auth_token': '',
         })
 
 
     def build_settings(self, settings):
         settings.register_type('password', SettingPassword)
+        settings.register_type('button', SettingButton)
         settings.add_json_panel('', self.config, data=settings_json)
 
 
@@ -227,8 +236,10 @@ class MahjongScorer(App):
             return
         self.set_headline('Game over')
         self.popup_menu.ids['forgetlasthandbutton'].disabled = True
-        self.game.in_progress = False
-        self.game.end_of_game()
+        if self.game.end_of_game() is None:
+            self.toggle_buttons()
+            return
+
         scoretable = self.root.ids.score_table
         results = scoretable.ids
         scores = scoretable.update_scores()
@@ -383,11 +394,11 @@ class MahjongScorer(App):
         for player in range(4):
             self.players[player].score += score_change[player]
 
+        self.deltascore_show(score_change)
+
         for idx in range(4):
             if self.riichi_stick_refs[idx].visible:
                 score_change[idx] -= 10
-
-        self.deltascore_show(score_change)
 
         self.add_score_line(
             score_change,
@@ -522,9 +533,13 @@ class MahjongScorer(App):
             else:
                 self.__end_profiling()
 
+        elif key == 'auth_token':
+            self.auth_token = md5(bytes(value, 'utf-8') + HASH_SALT).hexdigest()
+
 
     def on_pause(self):
         ''' mobile OS has paused the app '''
+        # TODO take this opportunity to try to sync all outstanding updates with the server
         return True
 
 
@@ -542,19 +557,20 @@ class MahjongScorer(App):
     def on_stop(self):
         ''' end app, so end profiler and dump its stats for later analysis '''
         # https://docs.python.org/3.6/library/profile.html
-        self.game.sync()
-        self.game.save()
+        if self.game.in_progress:
+            self.game.sync()
+            self.game.save()
         self.__end_profiling()
         Window.close()
 
 
-    def randomise_seating(self):
+    def randomise_seating(self, randomise):
         '''
         Received user names, so randomise the seating order, and start the game
         '''
-
         names = []
-        seating_order = random.sample(range(4), 4)
+
+        seating_order = random.sample(range(4), 4) if randomise else (0, 1, 2, 3)
         for player in range(4):
             self.players[player].index = player
             next_name = self.root.ids['player%dname' % seating_order[player]].text
@@ -564,6 +580,11 @@ class MahjongScorer(App):
             self.root.ids.score_table.column_headings[player + 1] = next_name
 
         self.game_start(names)
+
+
+    def register_new_player(self):
+        ''' send a new player's details to the server '''
+        self.log(Log.ERROR, '#TODO: MahjongScorer.register_new_player not yet coded')
 
 
     def screen_back(self):

@@ -26,7 +26,7 @@ class RegistrationForm(FlaskForm):
     password2 = PasswordField(
         'Repeat Password', validators=[DataRequired(), EqualTo('password')])
     pin = IntegerField(
-        '4-digit PIN number thta you will use to register games in the app',
+        '4-digit PIN number that you will use to register games in the app',
         validators=[DataRequired(), NumberRange(min=1111, max=9999)])
     submit = SubmitField('Register')
 

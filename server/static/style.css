@@ -1,0 +1,62 @@
+/* fluid type sizing via https://codepen.io/dbox/pen/meaMba */
+html {
+  font-size: calc(14px + 6 * ( (100vw - 420px) / 480));
+  font-weight: normal;
+}
+@media screen and (max-width: 420px) {
+  html {
+    font-size: 14px;
+  }
+}
+@media screen and (min-width: 900px) {
+  html {
+    font-size: 20px;
+  }
+}
+h1 {
+  font-size: calc(28px + 24 * ( (100vw - 420px) / 480));
+  font-weight: 100;
+}
+@media screen and (max-width: 420px) {
+  h1 {
+    font-size: 28px;
+  }
+}
+@media screen and (min-width: 900px) {
+  h1 {
+    font-size: 52px;
+  }
+}
+
+a[href], a[href]:visited, a[href]:active {
+    color: #FFB;
+    text-decoration: underline dotted;
+}
+a[href]:active {
+    border: underline wavy;
+}
+body {
+    background-color: #111;
+    color: #dfd
+}
+ul ul { list-style: none; }
+ul ul li:before {
+    content: '✓';
+    position: relative;
+    left: -2em;
+}
+ul ul li.TODO:before {
+    content: '□';
+}    
+tr:nth-child(even) {background: #222;}
+table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after { 
+    content: " \25B4\25BE" 
+}
+table.sortable td, table.sortable th {
+    border: none;
+    margin: 0px;
+    padding: 4px;
+}
+table.sortable tr:hover {
+    background: #444;
+}

@@ -4,17 +4,26 @@ maps server URIs to actions. Mostly the Controller part of MVC.
 '''
 
 from glob import glob
+from hashlib import md5
 import os
+import pickle
+import random
 import time
 
-from flask import render_template, flash, redirect, url_for, request
+from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask_httpauth import HTTPTokenAuth
 from flask_login import login_user, logout_user, current_user, login_required
 from werkzeug.urls import url_parse
 
 from mjserver import app, db, BASE_DIR
+from mjserver.errors import bad_request, error_response
 from mjserver.forms import LoginForm, RegistrationForm
-from mjserver.models import User, Game
+from mjserver.models import Game, User
+from mjserver.salt import HASH_SALT
 
+with open(str(BASE_DIR / 'wordlist.pickle'), 'rb') as wordlist_file:
+    wordlist = pickle.load(wordlist_file)
+wordlist_len = len(wordlist)
 
 @app.route('/')
 def front_page():
@@ -78,6 +87,18 @@ def games_index():
     return 'games_index'
 
 
+@app.route('/get-token')
+@login_required
+def get_token():
+    ''' provide random 4-word sequence for logins '''
+    token = ''
+    sep = ''
+    for idx in random.sample(range(wordlist_len), 4):
+        token += sep + wordlist[idx]
+        sep = ' '
+    return token
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     ''' handle website logins '''
@@ -86,7 +107,9 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         this_user = User.query.filter_by(username=form.username.data).first()
-        if this_user is None or not this_user.check_password(form.password.data):
+        if this_user is None \
+                or not this_user.check_password(form.password.data) \
+                or not this_user.active:
             flash('Invalid username or password')
             return redirect(url_for('login'))
         login_user(this_user, remember=form.remember_me.data)
@@ -123,16 +146,50 @@ def register():
 
 #%%
 API='/api/v0/'
+token_auth = HTTPTokenAuth()
+
+
+@app.route(API + 'game', methods=['POST'])
+def receive_json():
+    with open(str(BASE_DIR / 'sent.json'), 'w') as f:
+        f.write(str(request.get_json()))
+    return 'post received!'
+
+
+@token_auth.verify_token
+def verify_token(token):
+    test = User.check_token(token) if token else None
+
+    if test is not None and test.active:
+        login_user(test)
+        return True
+    return False
+
+
+@token_auth.error_handler
+def token_auth_error():
+    return error_response(401)
+
+
+@app.route(API + 'usersmd5', methods=['GET'])
+def json_usermd5_list():
+    userlist = []
+    for value in User.get_all_usernames():
+       userlist.append(md5(bytes(value[0], 'utf-8') + HASH_SALT).hexdigest())
+    return jsonify(userlist)
+
 
 @app.route(API + 'users', methods=['GET'])
+#@token_auth.login_required
 def json_user_list():
-    pass
-#
+    return jsonify(User.get_all_usernames(True))
+
+
 @app.route(API + '/user/new', methods=['POST'])
 def json_create_user():
     data = request.get_json() or {}
-    if 'username' not in data or 'email' not in data or 'password' not in data:
-        return bad_request('must include username, email and password fields')
+    if 'username' not in data or 'email' not in data or 'pin_hash' not in data:
+        return bad_request('must include username, email and pin fields')
     if User.query.filter_by(username=data['username']).first():
         return bad_request('please use a different username')
     if User.query.filter_by(email=data['email']).first():
@@ -144,6 +201,7 @@ def json_create_user():
     response = jsonify(user.to_dict())
     response.status_code = 201
     response.headers['new_id'] = user.id
+    response.headers['token'] = user.get_token()
     return response
 #
 #@app.route(API + '/user/<int:id>', methods=['PUT'])
@@ -151,9 +209,12 @@ def json_create_user():
 #    pass
 
 @app.route(API + '/game/new', methods=['POST'])
+@token_auth.login_required
 def json_create_game():
     pass
 
+
 @app.route(API + '/game/<int:id>', methods=['PUT'])
+@token_auth.login_required
 def json_update_game(id):
     pass

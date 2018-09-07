@@ -67,7 +67,7 @@ BoxLayout:
                     font_size: '40sp'
                     bold: True
                     text: "Start Game"
-                    on_release: app.ask_names()
+                    on_release: app.ask_to_resume()
 
 
         Screen:
@@ -81,7 +81,7 @@ BoxLayout:
                     text: 'Current\\nGame'
                     size_hint: 0.2, 0.1
                     pos_hint: {'bottom': 0, 'left': 0}
-                    on_release: app.screen_back()
+                    on_release: app.screen_switch('hand')
                 Button:
                     text: 'New\\nGame'
                     id: new_game_button
@@ -93,7 +93,6 @@ BoxLayout:
 
         Screen:
             name: 'gameslist'
-            on_enter: app.game.fill_games_table()
             FloatLayout:
                 orientation: 'vertical'
                 MJTable
@@ -101,12 +100,12 @@ BoxLayout:
                     size_hint: 1, 0.9
                     id: games_table
                     cols: 1
-                    data_items: ['']
+                    data_items: app.games_list
                 Button:
-                    text: 'Back'
+                    text: 'Cancel'
                     size_hint: 0.2, 0.1
                     pos_hint: {'bottom': 0, 'left': 0}
-                    on_release: app.screen_back()
+                    on_release: app.set_headline('') or app.screen_back()
 
 
         HandScreen:
@@ -343,6 +342,7 @@ BoxLayout:
                 size_hint_y: 0.6
                 pos_hint: {'top': 1}
                 orientation: 'vertical'
+
                 TextInput:
                     hint_text: 'Player 1 name'
                     id: player0name
@@ -386,11 +386,17 @@ BoxLayout:
                         text: 'WRC'
                         value: Ruleset.WRC2017
                         allow_no_selection: False
-                Button:
-                    id: allocatebutton
-                    font_size: '20sp'
-                    bold: True
-                    text: 'Allocate seating and start game'
-                    on_release: app.randomise_seating()
+                BoxLayout:
+                    orientation: 'horizontal'
+                    Button:
+                        id: allocatebutton
+                        font_size: '16sp'
+                        text: 'Randomise seating\\n and start game'
+                        on_release: app.randomise_seating(True)
 
+                    Button:
+                        id: allocatebutton
+                        font_size: '16sp'
+                        text: 'Seat in E,S,N,W order\\nand start game'
+                        on_release: app.randomise_seating(False)
 '''

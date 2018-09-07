@@ -7,38 +7,12 @@
     <title>{% block title %}{% endblock %} - ZAPS Mahjong Scorer</title>
     {% endblock %}
     <link rel=icon href="/static/icon1.png">
-    <style>
-    a[href], a[href]:visited, a[href]:active {
-        color: #FFB;
-        border: 3px outset #333;
-        display: inline-block;
-        text-decoration: none;
-    }
-    a[href]:active {
-        border: 3px inset;
-    }
-    body {
-        background-color: #111;
-        color: #dfd
-    }
-    ul ul { list-style: none; }
-    ul ul li:before {
-        content: '✓';
-        position: relative;
-        left: -2em;
-    }
-    ul ul li.TODO:before {
-        content: '□';
-    }
-    tr:nth-child(even) {background: #222;}
-    table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after { 
-    content: " \25B4\25BE" 
-}
-    </style>
+    <!--link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"-->
+    <link rel=stylesheet type="text/css" href="/static/style.css">
   </head>
   <body>
     <nav>
-        <a href='/'>Home</a> |
+        Welcome | <a href='/'>Home</a> |
         {% if current_user is defined and current_user.is_authenticated %}
             <b>Hi, {{ current_user.username }}!</b> | 
             <a href="{{ url_for('view_profile', user_id=current_user.id) }}">Profile</a> | 
@@ -57,7 +31,9 @@
         </ul>
         {% endif %}
     {% endwith %}
-    <div id=content>{% block content %}{% endblock %}</div>
+    <div id=content>
+        {% block content %}{% endblock %}
+    </div>
     <div id=footer>
       {% block footer %}
       &copy; 2018 by <a href="http://mj.bacchant.es/">ZAPS</a>.

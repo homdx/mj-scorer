@@ -4,7 +4,7 @@
 title = ZAPS Mahjong Scorer
 
 # (str) Package name
-package.name = zapScorer
+package.name = ZAPSMahjongScorer
 
 # (str) Package domain (needed for android/ios packaging)
 package.domain = es.bacchant.mahjong
@@ -40,7 +40,7 @@ version.filename = %(source.dir)s/main.py
 #     ".buildozer" -> android -> platform -> python-for-android-new-toolchain -> pythonforandroid -> recipes
 #     and here you delete the requests and idna folder
 #     from: https://github.com/kivy/python-for-android/issues/1072
-requirements = python3crystax==3.6,kivy,sqlite3,requests,urllib3,chardet,certifi,idna
+requirements = python3crystax==3.6,kivy,sqlite3,requests,urllib3,chardet,certifi,idna,android
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes

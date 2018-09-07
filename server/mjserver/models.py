@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from hashlib import md5
 import os
 
+from flask import g
 from flask_login import UserMixin
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm.collections import attribute_mapped_collection
@@ -80,19 +81,20 @@ class User(db.Model, UserMixin):
     both for players and for website logins.
     '''
     __tablename__ = 'user'
-    token = db.Column(db.String(32), index=True, unique=True)
-    token_expiration = db.Column(db.DateTime)
     id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(255))
+    token_hash = db.Column(db.String(32), index=True)
+    token_expiration = db.Column(db.DateTime)
     email = db.Column(db.Unicode(255), unique=True)
     username = db.Column(db.Unicode(255), unique=True)
-    pin_hash = db.Column(db.String(16))
+    pin_hash = db.Column(db.String(32))
     password_hash = db.Column(db.String(128))
     last_login_at = db.Column(db.DateTime())
     current_login_at = db.Column(db.DateTime())
     last_login_ip = db.Column(db.String(100))
     current_login_ip = db.Column(db.String(100))
     login_count = db.Column(db.Integer)
-    active = db.Column(db.Boolean())
+    active = db.Column(db.Boolean(), default=True)
     confirmed_at = db.Column(db.DateTime())
 
     games = association_proxy('played_games', 'game')
@@ -124,15 +126,25 @@ class User(db.Model, UserMixin):
         ''' just for pretty printing '''
         return '<User {}>'.format(self.username)
 
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+    @staticmethod
+    def check_token(token):
+        user = User.query.filter_by(token=token).first()
+        if user is None or user.token_expiration < datetime.utcnow():
+            return None
+        return user
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-    def set_pin(self, pin):
-        from mjserver.salt import HASH_SALT
-        self.pin_hash = md5(bytes(str(pin), 'utf-8') + HASH_SALT).digest()
+    @classmethod
+    def get_all_usernames(cls, with_pin_hash=False):
+        userlist = []
+        query = db.session.query(cls.username).order_by(cls.username)
+        if with_pin_hash:
+            query = query.add_columns(cls.pin_hash)
+        for value in query.all():
+            userlist.append(value)
+        return userlist
 
     def get_token(self, expires_in=60*60*24*35):
         '''
@@ -148,17 +160,21 @@ class User(db.Model, UserMixin):
         self.token = base64.b64encode(os.urandom(24)).decode('utf-8')
         self.token_expiration = now + timedelta(seconds=expires_in)
         db.session.add(self)
+        db.session.commit()
         return self.token
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def set_pin(self, pin):
+        from mjserver.salt import HASH_SALT
+        self.pin_hash = md5(bytes(str(pin), 'utf-8') + HASH_SALT).hexdigest()
 
     def revoke_token(self):
         self.token_expiration = datetime.utcnow() - timedelta(seconds=1)
 
-    @staticmethod
-    def check_token(token):
-        user = User.query.filter_by(token=token).first()
-        if user is None or user.token_expiration < datetime.utcnow():
-            return None
-        return user
+    def to_dict(self):
+        pass
 
 
 @login.user_loader

@@ -25,3 +25,4 @@ server/mjserver/config.py
 server/migrations/
 *.apk
 server/mjserver/salt.py
+client-app/salt.py

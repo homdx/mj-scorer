@@ -6,6 +6,7 @@ class for both live and completed games
 '''
 
 from datetime import datetime
+import json
 from pathlib import Path
 
 from time import time
@@ -15,6 +16,7 @@ from kivy.properties import ListProperty, NumericProperty
 from kivy.storage.jsonstore import JsonStore
 from kivy.uix.boxlayout import BoxLayout
 
+from mjcomponents import SelectableButton
 from mjdb import Mjdb
 from mjenums import Log, Rules
 
@@ -22,13 +24,10 @@ from mjenums import Log, Rules
 class MjGameStatus(BoxLayout):
     ''' class for game in progress, and completed games '''
     __db = Mjdb()
-
     __hand_count = 0
-
     __game_dict = {}
-
     __json_path = None
-
+    __score_table = None
     __saved_game_attributes = [
         'game_id', 'start_time', 'in_progress']
 
@@ -38,7 +37,6 @@ class MjGameStatus(BoxLayout):
     __end_of_hand_attributes = [
         'riichi_sticks', 'honba_sticks', ]
 
-    __score_table = None
 
     dealership = NumericProperty(1)
     game_id = ''
@@ -53,8 +51,19 @@ class MjGameStatus(BoxLayout):
     start_time = NumericProperty(0)
 
 
+    def check_before_resuming(self, ndx):
+        if self.in_progress:
+            self.save()
+        self.load_game_by_index(ndx)
+
+
     def end_of_game(self):
-        self.__end_of_hand()
+        self.in_progress = False
+        if self.__hand_count:
+            self.__end_of_hand()
+            return True
+        self.erase()
+        return None
 
 
     def erase(self):
@@ -62,16 +71,41 @@ class MjGameStatus(BoxLayout):
         self.sync()
 
 
-    def fill_games_table(self):
+    def fill_games_table(self, ongoing=None, add_new=False):
+        ''' populate the games table with a list of games,
+        and return the number of games listed
+        '''
+        self.__db.init()
         app_root = App.get_running_app()
-        table = app_root.root.ids.games_table
-        table.data_items = []
-        try:
-            games_list = self.__db.list_games()
-            for game in games_list:
-                table.data_items.append(game[1])
-        except:
-            pass
+        SelectableButton.callback = self.check_before_resuming
+        app_root.games_list = self.__db.list_games(ongoing)
+
+        # don't offer to restore older version of current game!
+        for game in range(len(app_root.games_list)):
+            if self.game_id == app_root.games_list[game][0]:
+                del app_root.games_list[game]
+                break
+
+        if ongoing is not False and not self.in_progress:
+            # get most recent game too, if not filtering on closed games only
+            self.__json_path = str(Path(app_root.user_data_dir) / 'current_game.json')
+            try:
+                test = JsonStore(self.__json_path)
+                if test['current']['in_progress']:
+                    for game in range(len(app_root.games_list)):
+                        if test['current']['game_id'] == app_root.games_list[game][0]:
+                            del app_root.games_list[game]
+                            break
+                    app_root.games_list.insert(0,[
+                        test['current']['game_id'],
+                        test['description']['desc'],
+                        test['current']])
+            except:
+                pass
+
+        if add_new:
+            app_root.games_list.insert(0, [None, 'New game', None])
+        return len(app_root.games_list)
 
 
     def forget_last_hand(self, do_it):
@@ -119,21 +153,24 @@ class MjGameStatus(BoxLayout):
         return description
 
 
-    def load(self, game):
-        ''' load a game restored from the db '''
-        self.__rebuild_score_table()
-        self.__restore_row(-1)
-        # TODO player_names etc
+    def get_summary(self):
+        return self.__game_dict['description']['desc']
 
 
-    def load_game_by_desc(self, desc):
-        try:
-            self.__game_dict['current'] = self.__db.load_game_by_desc(desc)
-            self.resume()
-            App.get_running_app().screen_switch('scoresheet')
-        except:
-            # TODO failed to load game from db
-            pass
+    def load_game_by_index(self, ndx):
+        app_root = App.get_running_app()
+        this_game = app_root.games_list[ndx]
+        self.__reset()
+        if this_game[0] is None:
+            # new game
+            app_root.ask_names()
+            return
+
+        self.__game_dict['current'] = \
+            this_game[2] if type(this_game[2]) == dict else json.loads(this_game[2])
+
+        self.resume()
+        app_root.screen_switch('scoresheet')
 
 
     def next_hand(self):
@@ -151,6 +188,7 @@ class MjGameStatus(BoxLayout):
             self.__reset()
             return False
 
+        app_root.set_headline('Game restored')
         self.__score_table = app_root.root.ids.score_table
 
         if not self.__restore_row(-1):
@@ -182,27 +220,34 @@ class MjGameStatus(BoxLayout):
 
 
     def resumption_possible(self):
-        ''' when starting up, check if there's a partial game in progress
-        stored, and if so, resume it automatically
+        ''' when starting up, check for ongoing games, and offer them,
+        together with the option of starting a new game
         '''
-        app_root = App.get_running_app()
         self.__db.init()
-        self.__json_path = str(Path(app_root.user_data_dir) / 'current_game.json')
-        try:
-            self.__game_dict = JsonStore(self.__json_path)
-            if self.__game_dict['current']['in_progress']:
-                return True
-        except:
-            pass
-        return False
+        return self.fill_games_table(ongoing=1, add_new=True)
 
 
     def save(self, results={}):
         ''' save the game to the games database'''
+        if not 'players' in self.__game_dict['current']:
+            return
         self.__game_dict['current'].update(results)
         self.__game_dict['current']['in_progress'] = self.in_progress
         description = self.game_summary()
         self.__db.save_game(self.__game_dict['current'], description)
+
+
+    def show_games(self, ongoing=True):
+        '''user has asked for a list of games to choose from, so provide
+        a scrollable list of selectable games.
+        '''
+        app_root = App.get_running_app()
+        if self.in_progress:
+            app_root.set_headline('Replace current game?')
+        else:
+            app_root.set_headline('Load game')
+        self.fill_games_table(ongoing)
+        app_root.screen_switch('gameslist')
 
 
     def start(self, ruleset=None, names=None):
@@ -230,7 +275,9 @@ class MjGameStatus(BoxLayout):
 
 
     def sync(self):
-        self.__game_dict.put('updated', updated=True)
+        if not 'players' in self.__game_dict['current']:
+            return
+        self.__game_dict.put('description', desc=self.game_summary())
 
 
     def update_score(self, data_row, new_section):
@@ -290,6 +337,7 @@ class MjGameStatus(BoxLayout):
 
         self.__hand_count = 0
         self.dealership = 1
+        self.start_time = time()
         self.game_id = app_root.config.get('main', 'installation_id') + str(int(self.start_time))
         self.game_log = []
         self.hand_redeals = 0
@@ -297,7 +345,6 @@ class MjGameStatus(BoxLayout):
         self.in_progress = True
         self.riichi_sticks = 0
         self.round_wind_index = 0
-        self.start_time = time()
 
 
     def __restore_row(self, row=-2):

@@ -125,10 +125,6 @@ class MjScoreTable(ScrollView):
         rows.remove_widget(row_to_remove)
 
 
-    def on_touch(self, ):
-        App.get_running_app().log('TODO MjScoreTable.on_touch', Log.DEBUG)
-
-
     def reset(self):
         self.ids.scoresection_hands.clear_widgets()
         ids = ['running_totals', 'net_scores', 'scoretable_uma',
@@ -136,10 +132,6 @@ class MjScoreTable(ScrollView):
                'scoretable_final_totals']
         for row in ids:
             self.ids[row].data_items[1:] = [''] * 4
-
-
-    def select_row(self, ):
-        App.get_running_app().log('TODO MjScoreTable.select_row', Log.DEBUG)
 
 
     def update_scores(self):
@@ -184,6 +176,7 @@ class MjScoreTable(ScrollView):
         Line:
             width: 1
             points:self.x, self.top, self.right, self.top
+
 
 <ScoreSection>:
     size_hint: 1, None

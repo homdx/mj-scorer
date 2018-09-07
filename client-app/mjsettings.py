@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-'''contains the settings structure'''
+'''
+contains the settings structure as a json file, to create the settings
+screen in kivy. The rest of the settings handling is in main.py, but could
+be moved here
+'''
 import json
 
 settings_json = json.dumps([

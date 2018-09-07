@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-
+'''
+ui and code for the score table widget
+'''
 from kivy.app import App
 from kivy.properties import ListProperty, NumericProperty, StringProperty
 from kivy.uix.gridlayout import GridLayout

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 '''
-database handling for ZAPS MJ Scorer
+Database-handling. This receives games as json, and stores
+them in the database. In time, this module will also handle the server communications,
+in a separate thread. Only back-end stuff is in here, no UI.
 '''
 
 from json import dumps, loads

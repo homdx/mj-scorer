@@ -3,10 +3,11 @@
 ZAPS Mahjong Scorer, on Android; Kivy + Python
 @author: ZAPS
 
+This is the main app file. All other client stuff is loaded from here.
 """
 
 # the following line is used by the builder. Don't mess with the spacing!
-__version__ = '0.2.3'
+__version__ = '0.2.4'
 
 
 from kivy.config import Config # pylint: disable=wrong-import-order,ungrouped-imports

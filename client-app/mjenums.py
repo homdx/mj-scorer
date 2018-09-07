@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-
+'''
+enumerations and static objects used by most other modules
+'''
 
 from kivy.app import App
 

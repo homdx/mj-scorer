@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-''' module containing the main user interface for the app '''
+'''
+module containing the main user interface for the app. No code, just the kv
+markup for the app. Other widgets get drawn in from other files, via the main.py app
+'''
 class Mjui(): # main UI
     ''' near-empty class which only exists to return the kv for the interface '''
     @staticmethod

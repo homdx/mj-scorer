@@ -1,7 +1,14 @@
 # -*- coding: utf-8 -*-
 '''
+Contains UI and code for handling the user questions about who did what:
+who chombod, who ronned, who was tenpai at a draw. Whenver the user has to
+assign players to a game event that has occurred, it goes through here.
 
-for who chombod, who ronned, who was tenpai at a draw
+Initially I tried handling all such events through a single class, but because
+it's possible to have a multiple ron with multiple pao, this became impossible.
+So there might be a bit of duplication between game events. This module could be
+refactored so that Draw, Pao, MultipleRons, Chombo all inherit from the
+same parent class, to remove much of that duplication.
 
 '''
 

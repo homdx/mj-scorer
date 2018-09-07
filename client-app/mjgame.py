@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 '''
+This module contains the functions for handling the start and end of hands and
+games. and the UI for the status box in the centre of the screen during gameplay.
 
-class for both live and completed games
+Ongoing games are saved after every scoring event in current_game.json. Only the
+current loaded game is stored there.
+
+Games are stored in the database when they are finished, and
+when a different game is loaded, and when the app is closed.
 
 '''
 

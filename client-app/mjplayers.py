@@ -3,6 +3,9 @@
 Get player names, authentication and authorisation
 Thanks to /u/Saunfe on reddit for the basis for the autocomplete code
 https://www.reddit.com/r/kivy/comments/99n2ct/anyone_having_idea_for_autocomplete_feature_in/
+
+Most of this needs to be merged into mjtable, because there's an absurd amount
+of overlap. I think that just the substringing and kv will be used from here.
 '''
 
 

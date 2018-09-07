@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-
-''' contains various visual components for the game '''
+'''
+various visual components for the game, and the code to manage them
+'''
 
 from kivy.app import App
 from kivy.animation import Animation

@@ -2,77 +2,23 @@
 '''
 The database structure. flask db uses this to auto-generate the db.
 And the server code uses this to operate the db.
-Mostly the model part of MVC.
 '''
-import base64
 from datetime import datetime, timedelta
 from hashlib import md5
-import os
+import pickle
+import random
 
-from flask import g
 from flask_login import UserMixin
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from mjserver import db, login
+from mjserver import db, login, BASE_DIR
 
+with open(str(BASE_DIR / 'wordlist.pickle'), 'rb') as wordlist_file:
+    wordlist = pickle.load(wordlist_file)
 
-#%% many-to-many mappings
-
-#roles_users = db.Table(
-#    'roles_users',
-#    db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
-#    db.Column('role_id', db.Integer(), db.ForeignKey('role.id'))
-#    )
-
-#users_teams = db.Table(
-#    'users_teams',
-#    db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
-#    db.Column('team_id', db.Integer(), db.ForeignKey('team.id'))
-#    )
-
-#games_teams = db.Table(
-#    'games_teams',
-#    db.Column('team_id', db.Unicode(255), db.ForeignKey('team.id')),
-#    db.Column('game_id', db.Integer(), db.ForeignKey('game.id')),
-#    db.Column('privilege', db.Integer(), db.ForeignKey('privilege.id'))
-#    )
-
-
-#%%
-
-
-#class Role(db.Model):
-#    ''' as yet unused. Intended for managing privileges '''
-#    __tablename__ = 'role'
-#    id = db.Column(db.Integer(), primary_key=True)
-#    name = db.Column(db.String(80), unique=True)
-#    description = db.Column(db.String(255))
-
-
-#class Privilege(db.Model):
-#    '''
-#    not used yet, but intended to manage logged-in users' privileges
-#    in reading/writing/deleting games.
-#    '''
-#    __tablename__ = 'privilege'
-#    id = db.Column(db.Integer, primary_key=True)
-#    description = db.Column(db.String(255))
-
-
-#class Team(db.Model):
-#    '''
-#    As yet unused. Intended for grouping players into teams that share
-#    the same privileges for managing games records, or appear in the same
-#    competition or league. But none of that is written yet.
-#    '''
-#    __tablename__ = 'team'
-#    id = db.Column(db.Integer, primary_key=True)
-#    name = db.Column(db.Unicode(255))
-#    description = db.Column(db.UnicodeText())
-#    active = db.Column(db.Boolean())
-
+wordlist_len = len(wordlist)
 
 class User(db.Model, UserMixin):
     '''
@@ -83,11 +29,10 @@ class User(db.Model, UserMixin):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(255))
-    token_hash = db.Column(db.String(32), index=True)
-    token_expiration = db.Column(db.DateTime)
     email = db.Column(db.Unicode(255), unique=True)
     username = db.Column(db.Unicode(255), unique=True)
-    pin_hash = db.Column(db.String(32))
+    login_count = db.Column(db.Integer)
+    pin = db.Column(db.Integer)
     password_hash = db.Column(db.String(128))
     last_login_at = db.Column(db.DateTime())
     current_login_at = db.Column(db.DateTime())
@@ -102,65 +47,42 @@ class User(db.Model, UserMixin):
     places = association_proxy('played_games', 'place')
     usersgames = db.relationship('UsersGames')
 
-#    teams = db.relationship(
-#        'Team',
-#        secondary=users_teams,
-#        primaryjoin=(users_teams.c.user_id == id),
-#        backref=db.backref('members', lazy='dynamic'),
-#        lazy='dynamic')
-
-#
-#    def add_to_team(self, team):
-#        if not self.is_in_team(team):
-#            self.teams.append(team)
-#
-#    def remove_from_team(self, team):
-#        if self.is_in_team(team):
-#            self.teams.remove(team)
-#
-#    def is_in_team(self, team):
-#        return self.teams.filter(
-#            users_teams.c.team_id == team.id).count() > 0
-
     def __repr__(self):
         ''' just for pretty printing '''
         return '<User {}>'.format(self.username)
 
-    @staticmethod
-    def check_token(token):
-        user = User.query.filter_by(token=token).first()
-        if user is None or user.token_expiration < datetime.utcnow():
-            return None
-        return user
+    @classmethod
+    def check_token(cls, token):
+        return cls.query.filter_by(token=token).first()
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-    @classmethod
-    def get_all_usernames(cls, with_pin_hash=False):
-        userlist = []
-        query = db.session.query(cls.username).order_by(cls.username)
-        if with_pin_hash:
-            query = query.add_columns(cls.pin_hash)
-        for value in query.all():
-            userlist.append(value)
-        return userlist
-
-    def get_token(self, expires_in=60*60*24*35):
-        '''
-        issue an authentication token that lasts 35 days, and store it
-        with the user in the database. Renew it if there's less than 28 days life
-        left on it. This way, it will get renewed at most once per week, and
-        user will remain logged in as long as they visit the site at least
-        once every 28 days.
-        '''
-        now = datetime.utcnow()
-        if self.token and self.token_expiration > now + timedelta(seconds= 4 * expires_in/5):
-            return self.token
-        self.token = base64.b64encode(os.urandom(24)).decode('utf-8')
-        self.token_expiration = now + timedelta(seconds=expires_in)
-        db.session.add(self)
+    def create_token(self):
+        ''' provide random 4-word sequence for logins '''
+        token = ''
+        sep = ''
+        for idx in random.sample(range(wordlist_len), 4):
+            token += sep + wordlist[idx]
+            sep = ' '
+        self.token = token
         db.session.commit()
+
+    @classmethod
+    def get_all_usernames(cls):
+        query = db.session.query(cls.username).filter_by(active=True).order_by(cls.username)
+        return query.all()
+
+    def get_token(self):
+        '''
+        issue an authentication token for logins that is a random 4-word sequence
+        that lasts 84 days, and store it
+        with the user in the database. Renew it if there's less than 28 days life
+        left on it.
+        '''
+        if not self.token :
+            self.create_token()
+
         return self.token
 
     def set_password(self, password):
@@ -168,10 +90,7 @@ class User(db.Model, UserMixin):
 
     def set_pin(self, pin):
         from mjserver.salt import HASH_SALT
-        self.pin_hash = md5(bytes(str(pin), 'utf-8') + HASH_SALT).hexdigest()
-
-    def revoke_token(self):
-        self.token_expiration = datetime.utcnow() - timedelta(seconds=1)
+        self.pin = pin
 
     def to_dict(self):
         pass

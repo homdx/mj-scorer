@@ -24,14 +24,15 @@ class Mjio():
     https://github.com/kivy/kivy/wiki/Working-with-Python-threads-inside-a-Kivy-application
     '''
     __current_game = None
+    __do_at_once = 4
     __iothread = None
     __requests = {}
     __responses = []
     __save_callbacks = []
     __seq_id = 0
-    __do_at_once = 4
+    __token = ''
 
-    api_path = 'https://mj.bacchant.es/api/v0/'
+    api_path = 'http://localhost:5000/api/v0/' # 'https://mj.bacchant.es/api/v0/'
     current_game_id = None
     cursor = None
     db = None
@@ -44,7 +45,7 @@ class Mjio():
 
     def __init__(self, **kwargs):
         super(Mjio, self).__init__(**kwargs)
-
+        return
         # start iothread
 
         self.__iothread = threading.Thread(target=self.__io_looper)
@@ -94,6 +95,7 @@ class Mjio():
 
             if self.__requests and self.update_server:
 
+
                 print('preparing to talk to server')
                 requests_to_send = {}
                 self.__responses = []
@@ -129,6 +131,22 @@ class Mjio():
             'retry': retry_after_restart}
 
 
+    def authenticate(self, username, password):
+        try:
+            req = requests.post(
+                url=self.api_path + 'login',
+                json={'username': username, 'password': password},
+                )
+            if req.ok:
+                self.__token = req.text
+                return self.__token
+            # TODO req.status_code == 403 means that username/password combo was invalid
+        except: # ConnectionError means server unavailable
+            pass
+        self.__token = ''
+        return ''
+
+
     def get_game_list(self, filters, callback):
         '''
         '''
@@ -140,22 +158,38 @@ class Mjio():
         '''
         callback(None)
 
+
+    def get_users(self):
+        req = requests.post(
+            url=self.api_path + 'users',
+            headers={'Authorization': 'Token %s' % self.__token},
+            )
+        return req.json if req.ok else None
+
+
+    def has_token(self):
+        return self.__token != ''
+
     def post_game(self, jsonstring):
         req = UrlRequest(
-            url='https://mj.bacchant.es/api/v0/game',
+            url=self.api_path+'game',
             on_success=self.call_ok,
             on_redirect=self.call_fail,
             on_failure=self.call_fail,
             on_error=self.call_fail,
             req_body=jsonstring.encode('utf-8'),
             req_headers={'Content-type':  'application/json',
-                         'Authorization': App.get_running_app().auth_token},
+                         'Authorization': self.__token},
             timeout=30,
             method='POST',
             #wait=wait
         )
 
         self.games_to_sync.append(req)
+
+
+    def set_token(self, token):
+        self.__token = token
 
 
     def sync_games(self):

@@ -10,9 +10,9 @@
     <a href='https://github.com/ApplySci/mj-scorer/issues'>raising an issue on github</a>
     if you're interested. Or ping me @ApplySci on one of the Discord Mahjong channels where I hang out.</p>
     <h1>Register</h1>
-    <form action="" method="post">
+    <form action='' method=post>
         {{ form.hidden_tag() }}
-        <p>
+        <p>This is the name that will be used for all the games you play. You can't change it later. It has to be unique, and it's going to get put on each of your games.<br>
             {{ form.username.label }}<br>
             {{ form.username(size=32) }}<br>
             {% for error in form.username.errors %}

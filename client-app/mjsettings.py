@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 '''
-contains the settings structure as a json file, to create the settings
+contains the settings structure as a dict, to create the settings
 screen in kivy. The rest of the settings handling is in main.py, but could
 be moved here
 '''
 import json
 
-settings_json = json.dumps([
+from kivy.app import App
+
+def settings_json():
+    button_text, setting_text, desc_text = App.get_running_app().registration_text()
+    return json.dumps([
     {'type': 'title', 'title': 'Settings'},
     {'type': 'options',
      'title': 'background colour',
@@ -38,25 +42,26 @@ settings_json = json.dumps([
      'key': 'use_server',
     },
     {'type': 'button',
-     'title': 'Open browser',
+     'title': setting_text,
      'section': 'main',
-     'buttons': [{'title': 'Open browser', 'id': 'browser'}],
-     'desc': 'Go to the website now to get your authentication sequence; then enter the words below',
-     'key': 'auth_browser'
+     'buttons': [{'title': button_text, 'id': 'register_device'}],
+     'desc': desc_text,
+     'key': 'register'
     },
-    {'type': 'password',
-     'title': 'Authentication sequence',
-     'section': 'main',
-     'desc': 'Enter the sequence of words you got from the website when you pressed the above button',
-     'key': 'auth_token'
-    },
-])
+    ])
 
 '''    {'type': 'string',
      'title': 'path to server API',
      'section': 'unused',
      'desc': 'include protocol, server and path to API, e.g. https://mj.bacchant.es/api/v0/',
      'key': 'api_path',
+    },
+    {'type': 'button',
+     'title': 'Open browser',
+     'section': 'main',
+     'buttons': [{'title': 'Open browser', 'id': 'browser'}],
+     'desc': 'Go to the website now to resgister',
+     'key': 'auth_browser'
     },
     {'type': 'string',
      'title': 'Name of the game store to use',

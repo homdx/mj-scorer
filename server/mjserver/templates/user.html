@@ -2,11 +2,24 @@
 
 {% block content %}
     <h1>User: {{ profiled.username }}</h1>
-
+    {% if profiled.username == current_user.username -%}
+        <h2>This is you</h2>
+        <!--button class=revealer data-reveal=pin>Show me my PIN number and device token</button-->
+        <form action='' method=post>
+            {{ form.hidden_tag() }}
+            <p>{{ form.email.label }} {{ form.email(size=32) }}<p>
+            <p>{{ form.pin.label }} {{ form.pin(size=4) }}</p>
+            <p>
+                {{ form.token.label }}<br>
+                {{ form.token(size=40) }}<br>
+                <button id=newtoken>Invalidate this token and create a new one</button>
+            </p>
+    {%- endif %}
+        </form>
     {% if profiled.usersgames|length == 0 -%}
         <p>No games for this user on file yet</p>
     {%- else -%}
-    <table class='sortable'>
+    <table class=sortable>
         <thead>
             <tr>
             <th>Game</th>
@@ -24,5 +37,5 @@
         </tbody>
     </table>
     {%- endif %}
-    
+
 {% endblock %}

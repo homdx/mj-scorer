@@ -17,6 +17,7 @@ from kivy.clock import Clock
 from kivy.factory import Factory
 from kivy.uix.popup import Popup
 from kivy.uix.scatterlayout import ScatterLayout
+
 from mjenums import Log, Result
 
 
@@ -38,19 +39,30 @@ class Draw():
 
     def cancelled(self):
         self.__popup.dismiss()
+        App.get_running_app().log(Log.CANCEL, 'DRAW cancelled')
 
 
     def go(self):
         self.__popup.open()
+        App.get_running_app().log(Log.INFO, 'DRAW')
 
 
     def when_done(self):
+        tenpai = self.__popup.get_selected_players()
         out = {
             'losers': [],
             'result': Result.DRAW,
-            'winners': self.__popup.get_selected_players()
+            'winners': tenpai
             }
         self.__popup.dismiss()
+        result_text = 'DRAW, in tenpai '
+        if len(tenpai):
+            for player in tenpai:
+                result_text += ', ' + Log.player_text(player)
+        else:
+            result_text += 'NONE'
+
+        App.get_running_app().log(Log.SCORE, result_text)
         App.get_running_app().hand_end(out)
 
 

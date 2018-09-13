@@ -61,6 +61,8 @@ BoxLayout:
         Screen:
             name: 'welcome'
 
+            # PinPad
+            # MJauto
             Helptext
 
             AnchorLayout:
@@ -97,7 +99,6 @@ BoxLayout:
         Screen:
             name: 'gameslist'
             FloatLayout:
-                orientation: 'vertical'
                 MJTable
                     pos_hint: {'top': 1, 'left': 0}
                     size_hint: 1, 0.9

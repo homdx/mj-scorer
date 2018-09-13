@@ -15,10 +15,10 @@ from datetime import datetime
 import json
 from pathlib import Path
 
-from time import time
+from time import gmtime, strftime, time
 
 from kivy.app import App
-from kivy.properties import ListProperty, NumericProperty
+from kivy.properties import NumericProperty
 from kivy.storage.jsonstore import JsonStore
 from kivy.uix.boxlayout import BoxLayout
 
@@ -34,19 +34,12 @@ class MjGameStatus(BoxLayout):
     __game_dict = {}
     __json_path = None
     __score_table = None
-    __saved_game_attributes = [
-        'game_id', 'start_time', 'in_progress']
-
-    __start_of_hand_attributes = [
-        'round_wind_index', 'dealership', 'hand_redeals']
-
-    __end_of_hand_attributes = [
-        'riichi_sticks', 'honba_sticks', ]
-
+    __saved_game_attributes = ['game_id', 'start_time', 'in_progress']
+    __start_of_hand_attributes = ['round_wind_index', 'dealership', 'hand_redeals']
+    __end_of_hand_attributes = ['riichi_sticks', 'honba_sticks', ]
 
     dealership = NumericProperty(1)
     game_id = ''
-    game_log = ListProperty([])
     hand_redeals = NumericProperty(0)
     honba_sticks = NumericProperty(0)
     in_progress = False
@@ -63,13 +56,94 @@ class MjGameStatus(BoxLayout):
         self.load_game_by_index(ndx)
 
 
-    def end_of_game(self):
+    def end_game(self):
         self.in_progress = False
-        if self.__hand_count:
-            self.__end_of_hand()
-            return True
+        if not self.__hand_count:
+            self.erase()
+            return None
+
+        app_root = App.get_running_app()
+        self.__end_of_hand()
+
+        scoretable = app_root.root.ids.score_table
+        results = scoretable.ids
+        scores = scoretable.update_scores()
+
+        ordered_scores = sorted(scores, reverse=True)
+        placement = [ordered_scores.index(app_root.players[idx].score) for idx in range(4)]
+        all_uma = self.rules.uma[:]
+
+        if self.rules.riichi_abandoned_at_end:
+            adjustment_total = 0
+        else:
+            # award limbo riichi bets to first place if rules allow
+            adjustment_total = 10 * self.riichi_sticks
+
+        adjustments = [adjustment_total] + [0] * 3
+
+        # calculation for sharing uma between tied places,
+        # and sharing left-over riichi sticks between joint-first places
+
+        # Note that there's a weird corner case:
+        #   one riichi stick left over, and three players in joint first place.
+        # 300 points each and just accept that the totals will be out by 0.1 (thousands)
+        # Should really be 333 points: see this FB post by former EMA president Tina
+        # https://www.facebook.com/groups/osamuko/permalink/1122431181120919/?comment_id=1123749627655741&comment_tracking=%7B%22tn%22%3A%22R0%22%7D
+
+        if ordered_scores[0] == ordered_scores[1] == ordered_scores[2] == ordered_scores[3]:
+            # 1111
+            all_uma = [round(sum(all_uma)/4)] * 4
+            adjustments = [int(adjustment_total/4)] * 4
+        elif ordered_scores[1] == ordered_scores[2] == ordered_scores[3]:
+            # 1222
+            all_uma[1:] = [round(sum(all_uma[1:]) / 3)] * 3
+        elif ordered_scores[0] == ordered_scores[1] == ordered_scores[2]:
+            # 1114
+            all_uma[0:3] = [round(sum(all_uma[0:3]) / 3)] * 3
+            adjustments[0:3] = [int(adjustment_total/3)] * 3
+        elif ordered_scores[0] == ordered_scores[1] and ordered_scores[2] == ordered_scores[3]:
+            # 1133
+            all_uma = [round(sum(all_uma[0:2]) / 2)] * 2 + [round(sum(all_uma[2:]) / 2)] * 2
+            adjustments[0:2] = [int(adjustment_total/2)] * 2
+        elif ordered_scores[1] == ordered_scores[2]:
+            #1224
+            all_uma[1:3] = [round(sum(all_uma[1:3]) / 2)] * 2
+        elif ordered_scores[2] == ordered_scores[3]:
+            #1233
+            all_uma[2:] = [round(sum(all_uma[2:]) / 2)] * 2
+        elif ordered_scores[0] == ordered_scores[1]:
+            #1134
+            all_uma[0:2] = [round(sum(all_uma[0:2]) / 2)] * 2
+            adjustments[0:2] = [int(adjustment_total/2)] * 2
+        #1234 - no changes needed
+
+        for idx in range(4):
+
+            net_score = scores[idx] - self.rules.starting_points
+            results.net_scores.data_items[idx + 1] = net_score
+
+            uma = all_uma[placement[idx]]
+            results.scoretable_uma.data_items[idx + 1] = uma
+
+            chombos = self.rules.chombo_value * app_root.players[idx].chombo_count
+            results.scoretable_chombos.data_items[idx + 1] = chombos
+
+            adjustment = adjustments[placement[idx]]
+            results.scoretable_adjustments.data_items[idx + 1] = adjustment
+
+            results.scoretable_final_totals.data_items[idx + 1] = \
+                net_score + uma + chombos + adjustment
+
+        self.save({
+            'net_scores': results.net_scores.data_items[1:],
+            'uma': results.scoretable_uma.data_items[1:],
+            'chombos': results.scoretable_chombos.data_items[1:],
+            'adjustments': results.scoretable_adjustments.data_items[1:],
+            'final_score': results.scoretable_final_totals.data_items[1:]
+        })
+
+        scoretable.scroll_to(results.scoretable_final_totals)
         self.erase()
-        return None
 
 
     def erase(self):
@@ -179,6 +253,20 @@ class MjGameStatus(BoxLayout):
         app_root.screen_switch('scoresheet')
 
 
+    def log_append(self, log_type, log_text):
+        timestamp = strftime("%Y-%m-%d %H:%M:%S Z", gmtime())
+
+        if 'log' not in self.__game_dict['current']:
+            self.__game_dict['current']['log'] = []
+        self.__game_dict['current']['log'].append('%s\t%s\t%d\t%s\t%s' % (
+            timestamp,
+            self.ids.hand_number.text,
+            log_type['priority'],
+            log_type['text'],
+            log_text
+        ))
+
+
     def next_hand(self):
         self.__end_of_hand()
         self.__next_hand()
@@ -201,7 +289,10 @@ class MjGameStatus(BoxLayout):
             app_root.log(Log.ERROR, 'Failed to restore game')
             return False
 
-        app_root.log(Log.DEBUG, 'Restoring game')
+        app_root.log(
+            Log.DEBUG,
+            'Restoring game on device ' + app_root.config.get('main', 'installation_id')
+            )
 
         for item in self.__saved_game_attributes:
             setattr(self, item, self.__game_dict['current'][item])

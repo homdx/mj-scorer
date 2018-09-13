@@ -29,33 +29,33 @@
 <section>
 <h2>Recent updates</h2>
 <ul>
-<li>v0.2.3:
-    <ul>
-        <li>provide a scrollable list of local incomplete games to resume from
-        <li>Tag games in the local database as live/ended, for easy searches
-    </ul>
-<li>v0.2.2:
-    <ul>
-        <li>Negative scores are now red and positive scores are green, in both Japanese and Western formats
-        <li>add option to skip the randomisation of seating
-        <li>end-of hand display of scores is now consistent with tenhou: riichi stick values are included for the winner, but not for losers who have riichi'd.
-    </ul>
+    <li>v0.3 (in progress, coming soon-ish):
+        <ul>
+            <li>sqlalchemy database on server
+            <li>register players on website (live, but db gets wiped regularly, so don't register yet!)
+            <li>Register device with server
+            <li>server authentication by token that is stored (non-volatile) within app
+            <li class='TODO'>get list of registered players into app from website, in background
+            <li class='TODO'>app offers list of registered players to choose from for a new game
+            <li class='TODO'>store games (finished and unfinished) on server
+            <li class='TODO'>get list of unfinished games from server, in which the player registered on this device is playing
+            <li class='TODO'>enable app to retrieve a particular unfinished game from server, and resume it
+        </ul>
+    <li>v0.2.3:
+        <ul>
+            <li>provide a scrollable list of local incomplete games to resume from
+            <li>Tag games in the local database as live/ended, for easy searches
+        </ul>
+    <li>v0.2.2:
+        <ul>
+            <li>Negative scores are now red and positive scores are green, in both Japanese and Western formats
+            <li>add option to skip the randomisation of seating
+            <li>end-of hand display of scores is now consistent with tenhou: riichi stick values are included for the winner, but not for losers who have riichi'd.
+        </ul>
 </ul>
 <hr>
 <h2># TODO (in descending priority)</h2>
 <ul>
-    <li>v0.3 (in progress):
-        <ul>
-            <li>sqlalchemy database on server
-            <li>register players on website (live, but db gets wiped regularly, so don't register yet!)
-            <li class='TODO'>server authentication by token within app
-            <li class='TODO'>get list of registered players into app from website
-            <li class='TODO'>enable app to give user list of registered players for a new game
-            <li class='TODO'>Enable upload/download of games in progress for later resumption from same or different device
-            <li class='TODO'>store game (finished or in progress) on server, in a named store protected by a user-chosen password
-            <li class='TODO'>get list of games from server for a defined group, once that group's password is entered
-            <li class='TODO'>enable app to retrieve a particular game in progress from server
-        </ul>
     <li><h3>v0.4:</h3>
         <ul>
             <li class='TODO'>delete game from local game db

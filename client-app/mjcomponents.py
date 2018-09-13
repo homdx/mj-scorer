@@ -104,10 +104,10 @@ class RiichiStick(Button):
         if really_deriichi:
             app_root.log(
                 Log.UNUSUAL,
-                '%s confirmed de-riichi, %s' % (self.player.wind, self.player.player_name))
+                '%s confirmed de-riichi (%s)' % (self.player.wind, self.player.player_name))
             app_root.log(
                 Log.SCORE,
-                '%sde-riichi, %s' % (self.player.wind, self.player.player_name))
+                '%s de-riichi (%s)' % (self.player.wind, self.player.player_name))
             self.visible = 0
             self.player.score += 10
             app_root.game.riichi_sticks -= 1
@@ -116,8 +116,8 @@ class RiichiStick(Button):
 
         else:
             app_root.log(
-                Log.INFO,
-                '%s decided not to de-riichi, %s' % (self.player.wind, self.player.player_name))
+                Log.DEBUG,
+                '%s (%s) decided not to de-riichi' % (self.player.wind, self.player.player_name))
 
 
     def pressed(self):
@@ -128,8 +128,8 @@ class RiichiStick(Button):
 
         if self.visible:
             app_root.log(
-                Log.INFO,
-                '%s asked to de-riichi, %s' % (self.player.wind, self.player.player_name))
+                Log.DEBUG,
+                '%s (%s) asked to de-riichi' % (self.player.wind, self.player.player_name))
             app_root.yesno_popup.angle = self.player.angle
             app_root.yesno_popup.callback = self.de_riichi
             app_root.yesno_popup.question = '[b]Are you sure you want to remove your riichi?[/b]'
@@ -137,7 +137,7 @@ class RiichiStick(Button):
             app_root.yesno_popup.false_text = "NO, keep the riichi"
             app_root.yesno_popup.open()
         else:
-            app_root.log(Log.SCORE, '%s riichi, %s' % (self.player.wind, self.player.player_name))
+            app_root.log(Log.SCORE, '%s (%s) riichi' % (self.player.wind, self.player.player_name))
             self.visible = 1
             self.player.score -= 10
             app_root.game.riichi_sticks += 1
@@ -163,7 +163,7 @@ class HandScreen(Screen):
         self.result = result
         app_root = App.get_running_app()
         app_root.set_headline(msg)
-        app_root.log(Log.SCORE, msg)
+        app_root.log(Log.INFO, msg)
         app_root.hanfubutton_callback = self.got_score
         app_root.screen_switch('hanfubuttons')
 
@@ -217,9 +217,12 @@ class HandScreen(Screen):
                     # don't tsumo if the double click was on the riichi stick
                     return False
 
-                self.__get_score('Tsumo by %s' % player.wind, {
-                    'result': Result.TSUMO,
-                    'winners': player.index})
+                self.__get_score(
+                    'TSUMO by %s ' % player.wind,
+                    {
+                        'result': Result.TSUMO,
+                        'winners': player.index
+                    })
 
             elif touch.time_end - touch.time_start > 2:
                 app_root.log(Log.DEBUG, 'Long press recorded for %s' % player.wind)
@@ -261,14 +264,24 @@ class SettingButton(SettingItem):
             self.add_widget(obj)
             obj.bind(on_release=self.on_pressed)
 
+
     def set_value(self, section, key, value):
         # we don't want set_value to do anything as this isn't a real setting
         pass
 
-    @staticmethod
-    def on_pressed(instance):
-        import webbrowser
-        webbrowser.open(url='https://mj.bacchant.es/get-token', new=1)
+
+    def on_pressed(self, instance):
+        self.panel.settings.dispatch(
+            'on_config_change',
+            self.panel.config,
+            self.section,
+            self.key, instance.ID)
+
+
+    #@staticmethod
+    #def launch_browser():
+    #    import webbrowser
+    #    webbrowser.open(url='https://mj.bacchant.es/register', new=1)
 
 
 class PasswordLabel(Label):

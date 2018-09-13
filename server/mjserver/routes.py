@@ -1,29 +1,30 @@
 # -*- coding: utf-8 -*-
 '''
-maps server URIs to actions. Mostly the Controller part of MVC.
+maps server URIs to actions
 '''
+
+# core python imports
 
 from glob import glob
 from hashlib import md5
 import os
-import pickle
-import random
 import time
+
+# framework imports
 
 from flask import flash, jsonify, redirect, render_template, request, url_for
 from flask_httpauth import HTTPTokenAuth
 from flask_login import login_user, logout_user, current_user, login_required
 from werkzeug.urls import url_parse
 
+# my app imports
+
 from mjserver import app, db, BASE_DIR
 from mjserver.errors import bad_request, error_response
-from mjserver.forms import LoginForm, RegistrationForm
+from mjserver.forms import LoginForm, ProfileForm, RegistrationForm
 from mjserver.models import Game, User
 from mjserver.salt import HASH_SALT
 
-with open(str(BASE_DIR / 'wordlist.pickle'), 'rb') as wordlist_file:
-    wordlist = pickle.load(wordlist_file)
-wordlist_len = len(wordlist)
 
 @app.route('/')
 def front_page():
@@ -50,14 +51,6 @@ def front_page():
         filetime=filetime,
         newest=newest,
         user=current_user)
-
-
-@app.route('/user/<user_id>')
-@login_required
-def view_profile(user_id):
-    ''' display user profile page '''
-    this_user = User.query.filter_by(id=user_id).first_or_404()
-    return render_template('user.html', profiled=this_user)
 
 
 @app.route('/game/<game_id>')
@@ -87,16 +80,14 @@ def games_index():
     return 'games_index'
 
 
-@app.route('/get-token')
+@app.route('/user/<user_id>', methods=['GET', 'POST'])
 @login_required
-def get_token():
-    ''' provide random 4-word sequence for logins '''
-    token = ''
-    sep = ''
-    for idx in random.sample(range(wordlist_len), 4):
-        token += sep + wordlist[idx]
-        sep = ' '
-    return token
+def view_profile(user_id):
+    ''' display user profile page '''
+    this_user = User.query.filter_by(id=user_id).first_or_404()
+    form = ProfileForm(obj=this_user)
+    if not form.validate_on_submit():
+        return render_template('user.html', profiled=this_user, form=form)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -134,19 +125,36 @@ def register():
         return redirect(url_for('front_page'))
     form = RegistrationForm()
     if form.validate_on_submit():
-        this_user = User(username=form.username.data, email=form.email.data)
+        this_user = User()
+        form.populate_obj(this_user)
         this_user.set_password(form.password.data)
         this_user.set_pin(form.pin.data)
+        this_user.create_token()
         db.session.add(this_user)
         db.session.commit()
-        flash('Congratulations, you are now a registered user!')
-        return redirect(url_for('login'))
+        flash('Congratulations, you are now a registered user, you are now logged in!')
+        login_user(this_user)
+        return redirect(url_for('view_profile', user_id=this_user.id))
     return render_template('register.html', title='Register', form=form)
 
 
 #%%
 API='/api/v0/'
-token_auth = HTTPTokenAuth()
+token_auth = HTTPTokenAuth(scheme='Token')
+
+
+@app.route(API + 'login', methods=['POST'])
+def api_login():
+    data = request.get_json() or {}
+    try:
+        user = User.query.filter_by(username=data['username']).first()
+        if user.active and user.check_password(data['password']):
+            login_user(user)
+            return user.token, 200
+    except:
+        pass
+
+    return error_response(403)
 
 
 @app.route(API + 'game', methods=['POST'])
@@ -171,24 +179,16 @@ def token_auth_error():
     return error_response(401)
 
 
-@app.route(API + 'usersmd5', methods=['GET'])
-def json_usermd5_list():
-    userlist = []
-    for value in User.get_all_usernames():
-       userlist.append(md5(bytes(value[0], 'utf-8') + HASH_SALT).hexdigest())
-    return jsonify(userlist)
-
-
 @app.route(API + 'users', methods=['GET'])
-#@token_auth.login_required
+@token_auth.login_required
 def json_user_list():
-    return jsonify(User.get_all_usernames(True))
+    return jsonify(User.get_all_usernames())
 
 
 @app.route(API + '/user/new', methods=['POST'])
 def json_create_user():
     data = request.get_json() or {}
-    if 'username' not in data or 'email' not in data or 'pin_hash' not in data:
+    if 'username' not in data or 'email' not in data or 'pin' not in data:
         return bad_request('must include username, email and pin fields')
     if User.query.filter_by(username=data['username']).first():
         return bad_request('please use a different username')

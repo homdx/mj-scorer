@@ -1,63 +1,20 @@
 # -*- coding: utf-8 -*-
 '''
 Get player names, authentication and authorisation
-Thanks to /u/Saunfe on reddit for the basis for the autocomplete code
-https://www.reddit.com/r/kivy/comments/99n2ct/anyone_having_idea_for_autocomplete_feature_in/
-
-Most of this needs to be merged into mjtable, because there's an absurd amount
-of overlap. I think that just the substringing and kv will be used from here.
 '''
 
 
-from kivy.factory import Factory
-from kivy.properties import NumericProperty, ListProperty, BooleanProperty, \
-                            ObjectProperty, StringProperty
+from kivy.properties import NumericProperty, ListProperty, ObjectProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.textinput import TextInput
-from kivy.uix.recycleview.views import RecycleDataViewBehavior
-from kivy.uix.recycleboxlayout import RecycleBoxLayout
-from kivy.uix.behaviors import FocusBehavior
-from kivy.uix.recycleview.layout import LayoutSelectionBehavior
 
 
-WORD_LIST = ['how to use python', 'how to use kivy', 'to', 'how to ...',
-             'abcdef', 'defghi', 'ghijkl']
-
-
-class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
-                                 RecycleBoxLayout):
-    ''' Adds selection and focus behaviour to the view. '''
-
-
-class SelectableLabel(RecycleDataViewBehavior, Label):
-    ''' Add selection support to the Label '''
-    index = None
-    selected = BooleanProperty(False)
-    selectable = BooleanProperty(True)
-
-    def refresh_view_attrs(self, rv, index, data):
-        ''' Catch and handle the view changes '''
-        self.index = index
-        return super(SelectableLabel, self).refresh_view_attrs(
-            rv, index, data)
-
-    def on_touch_down(self, touch):
-        ''' Add selection on touch down '''
-        if super(SelectableLabel, self).on_touch_down(touch):
-            return True
-        if self.collide_point(*touch.pos) and self.selectable:
-            print('#TODO')
-            self.parent.select_with_touch(self.index, touch)
-            # TODO Need to assign it to something,
-            # empty the text input, and close this dialogue
-            return self.text, self.index
-
-    def apply_selection(self, rv, index, is_selected):
-        ''' Respond to the selection of items in the view. '''
-        self.selected = is_selected
+WORD_LIST = \
+    [1, 'how to use python'], [2, 'how to use kivy'], [3, 'to'], \
+    [4, 'how to ...'], [5, 'abcdef'], [6, 'defghi'], [7, 'ghijkl']
 
 
 class AutoComplete_TextInput(TextInput):
@@ -65,38 +22,38 @@ class AutoComplete_TextInput(TextInput):
     auto-complete text box which offers suggestions based on
     substrings of entered text
     '''
-    txt_input = ObjectProperty()
+    #txt_input = ObjectProperty()
     flt_list = ObjectProperty()
     word_list = ListProperty(WORD_LIST)
     prepared_word_list = []
-
     min_length_to_match = NumericProperty(3)
 
     def __init__(self, **kwargs):
         super(AutoComplete_TextInput, self).__init__(**kwargs)
+        self.prepared_word_list = []
         for word in self.word_list:
-            self.prepared_word_list.append(self.prepare_string(word))
+            self.prepared_word_list.append(self.prepare_string(word[1]))
 
     def on_text(self, instance, value):
         # find all the occurrence of the substring
-        self.parent.ids.rv.data = []
+        #self.parent.ids.rv.data = []
         test = self.prepare_string(value)
         try:
             this_index = self.prepared_word_list.index(test)
         except ValueError:
             this_index = None
             if self.min_length_to_match > len(test):
+                self.word_list = WORD_LIST
                 return
 
-        display_data = []
+        self.word_list = []
         actual_index = None
-        for i in range(len(self.word_list)):
+        for i in range(len(self.prepared_word_list)):
             if test in self.prepared_word_list[i]:
                 if i == this_index:
-                    actual_index = len(display_data)
-                display_data.append({'text': self.word_list[i]})
+                    actual_index = len(self.word_list)
+                self.word_list.append(WORD_LIST[i])
 
-        self.parent.ids.rv.data = display_data
 
         if actual_index is not None:
             # then in the next frame, find all SelectableLabel in rv
@@ -107,8 +64,7 @@ class AutoComplete_TextInput(TextInput):
 
     def keyboard_on_key_down(self, window, keycode, text, modifiers):
         key, key_str = keycode
-        print(key)
-        if key in (13, 271):
+        if key in (9, 13, 271):
             # TODO end it with whatever's selected, or if there's only one item
             # in list now, pick that
             print('bang 2')
@@ -122,9 +78,7 @@ class AutoComplete_TextInput(TextInput):
 
 
 class MJauto(BoxLayout):
-
-    txt_input = ObjectProperty()
-    rv = ObjectProperty()
+    pass
 
 
 class PinButton(Button):
@@ -221,53 +175,65 @@ class PlayerNames():
 
 <MJauto>:
 
-    canvas:
-        Color:
-            rgba:(1, 1, 1, 1)
-        Rectangle:
-            pos: self.pos
-            size: self.size
-
     orientation: 'vertical'
     spacing: 2
-    txt_input: txt_input
-    rv: rv
 
     AutoComplete_TextInput:
         readonly: False
         multiline: False
         id: txt_input
+        table: users_table
         size_hint_y: None
         height: dp(30)
-    RecycleView:
-        id: rv
-        canvas:
-            Color:
-                rgba: 0,0,0,.2
-            Line:
-                rectangle: self.x +1 , self.y, self.width - 2, self.height -2
-        bar_width: 10
-        scroll_type:['bars']
-        viewclass: 'SelectableLabel'
-        SelectableRecycleBoxLayout:
-            default_size: None, dp(24)
-            default_size_hint: 1, None
-            size_hint_y: None
+
+    MJTable:
+        id: users_table
+        txt_input: txt_input
+        cols: 1
+        data_items: txt_input.word_list
+
+
+<LoginPopup@Popup>:
+
+    title: 'Register this device'
+    auto_dismiss: False
+    on_open: username.focus = True
+
+    BoxLayout:
+        size_hint: 0.9, 0.5
+        pos_hint: {'top': 1}
+        orientation: 'vertical'
+
+        Label:
+            text: 'By registering this device with the server, your games will be stored there'
+
+        TextInput:
+            hint_text: "User name as registered"
+            id: username
+            write_tab: False
+            multiline: False
             height: self.minimum_height
-            orientation: 'vertical'
-            multiselect: False
-            spacing: dp(8)
-
-
-<SelectableLabel>:
-    # Draw a background to indicate selection
-    color: 0,0,0,1
-    canvas.before:
-        Color:
-            rgba: (0, 0, 1, .5) if self.selected else (1, 1, 1, 1)
-        Rectangle:
-            pos: self.pos
-            size: self.size
+            focus: True
+            on_text_validate: password.focus = True
+        TextInput:
+            hint_text: "Website password"
+            id: password
+            write_tab: False
+            multiline: False
+            height: self.minimum_height
+            password: True
+        Button:
+            id: loginbutton
+            font_size: '20sp'
+            bold: True
+            text: 'Login'
+            on_release: root.dismiss() or app.register_device(username.text, password.text)
+        Button:
+            id: cancelbutton
+            font_size: '20sp'
+            bold: True
+            text: 'Cancel'
+            on_release: root.dismiss()
 
 
 <NewUserPopup@Popup>:
@@ -384,6 +350,7 @@ class PlayerNames():
             text: '0'
         PinButton:
             text: 'Cancel'
+
 
 <PinPadPopup>:
     on_open: pinpad.reset()

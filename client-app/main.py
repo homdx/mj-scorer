@@ -7,7 +7,7 @@ This is the main app file. All other client stuff is loaded from here.
 """
 
 # the following line is used by the builder. Don't mess with the spacing!
-__version__ = '0.2.4'
+__version__ = '0.3.0'
 
 
 from kivy.config import Config # pylint: disable=wrong-import-order,ungrouped-imports
@@ -17,11 +17,10 @@ Config.set('postproc', 'double_tap_time', '650') # pylint: disable=wrong-import-
 
 import cProfile
 from functools import partial
-from hashlib import md5
 from math import ceil, fabs, copysign
 from pathlib import Path
 import random # for randomising seat placement
-from time import gmtime, strftime, time
+from time import time
 
 # kivy libraries
 
@@ -38,6 +37,7 @@ from kivy.uix.settings import SettingsWithTabbedPanel
 # components supplied with this app
 
 from mjcomponents import Mjcomponents, SettingButton, SettingPassword
+from mjdb import Mjio
 from mjenums import Log, Result
 from mjgame import MjGameStatus
 from mjplayers import PlayerNames
@@ -56,16 +56,17 @@ class MahjongScorer(App):
 
     '''
 
+    __auth_button = None
     __callback_ref = None
     __chombo = None
     __draw = None
-    __log_to_server = Log.SCORE
+    __mjio = Mjio()
     __multiplerons = None
     __pao = None
     __popup_help = None
     __profile = None
+    __settings = None
 
-    auth_token = None
     bg_colour = ListProperty([0, 0, 0, 1])
     delta_overlays = ListProperty([])
     deltascore_popup = None
@@ -145,7 +146,7 @@ class MahjongScorer(App):
 
         self.japanese_numbers = self.config.getboolean('main', 'japanese_numbers')
         self.set_wind_labels(self.config.getboolean('main', 'japanese_winds'))
-        self.auth_token = self.config.get('main', 'auth_token')
+        self.__mjio.set_token(self.config.get('main', 'auth_token'))
 
         self.bg_colour = self.__get_gb_color(self.config.get('main', 'bg_colour'))
         return root
@@ -153,27 +154,27 @@ class MahjongScorer(App):
 
     def build_config(self, config):
         config.setdefaults('main', {
+            'auth_token': '',
             'installation_id': str(time()).replace('.', '').replace(',', '')[-10:],
-            'use_server': False,
             'bg_colour': 'black',
             'japanese_numbers': False,
             'japanese_winds': True,
-            'auth_token': '',
-            'auth_browser': '',
+            'register': None, # dummy for the register button
+            'use_server': False,
+            'username': '',
         })
         config.setdefaults('unused', {
             'api_path': 'https://mj.bacchant.es/api/v0/',
-            'profiling': False,
             'api_store': '',
-            'api_password': '',
-            'auth_token': '',
+            'profiling': False,
         })
 
 
     def build_settings(self, settings):
         settings.register_type('password', SettingPassword)
         settings.register_type('button', SettingButton)
-        settings.add_json_panel('', self.config, data=settings_json)
+        settings.add_json_panel('', self.config, data=settings_json())
+        self.__settings = settings
 
 
     def calculate_ron_scores(self, result):
@@ -193,8 +194,13 @@ class MahjongScorer(App):
 
         self.log(
             Log.SCORE,
-            'Ron of hand value %d by %s off %s' % (
-                result['score'], winner, result['losers']))
+            'RON of hand value %d by %s (%s) off %s (%s)' % (
+                result['score'],
+                self.winds[winner],
+                self.players[winner].player_name,
+                self.winds[result['losers']],
+                self.players[result['losers']].player_name
+            ))
 
         self.__de_riichi(winner)
 
@@ -202,7 +208,7 @@ class MahjongScorer(App):
 
 
     def cancel_end_of_hand(self):
-        self.log(Log.UNUSUAL, 'cancelling end of hand')
+        self.log(Log.CANCEL, 'cancelling end of hand')
         self.screen_switch('hand')
         self.set_headline('End of Hand has been cancelled')
 
@@ -235,93 +241,14 @@ class MahjongScorer(App):
     def game_end(self, really_end=True):
         if not really_end:
             return
+
         self.set_headline('Game over')
+
+        if self.game.end_game():
+            self.screen_switch('scoresheet')
+
         self.popup_menu.ids['forgetlasthandbutton'].disabled = True
-        if self.game.end_of_game() is None:
-            self.toggle_buttons()
-            return
-
-        scoretable = self.root.ids.score_table
-        results = scoretable.ids
-        scores = scoretable.update_scores()
-
-        ordered_scores = sorted(scores, reverse=True)
-        placement = [ordered_scores.index(self.players[idx].score) for idx in range(4)]
-        all_uma = self.game.rules.uma[:]
-
-        if self.game.rules.riichi_abandoned_at_end:
-            adjustment_total = 0
-        else:
-            # award limbo riichi bets to first place if rules allow
-            adjustment_total = 10 * self.game.riichi_sticks
-
-        adjustments = [adjustment_total] + [0] * 3
-
-        # calculation for sharing uma between tied places,
-        # and sharing left-over riichi sticks between joint-first places
-
-        # Note that there's a weird corner case.
-        # one riichi stick left over, and three players in joint first place?
-        # 300 points each and just accept that the totals will be out by 0.1 (thousands)
-        # Should really be 333 points: see this FB post by former EMA president Tina
-        # https://www.facebook.com/groups/osamuko/permalink/1122431181120919/?comment_id=1123749627655741&comment_tracking=%7B%22tn%22%3A%22R0%22%7D
-
-        if ordered_scores[0] == ordered_scores[1] == ordered_scores[2] == ordered_scores[3]:
-            # 1111
-            all_uma = [round(sum(all_uma)/4)] * 4
-            adjustments = [int(adjustment_total/4)] * 4
-        elif ordered_scores[1] == ordered_scores[2] == ordered_scores[3]:
-            # 1222
-            all_uma[1:] = [round(sum(all_uma[1:]) / 3)] * 3
-        elif ordered_scores[0] == ordered_scores[1] == ordered_scores[2]:
-            # 1114
-            all_uma[0:3] = [round(sum(all_uma[0:3]) / 3)] * 3
-            adjustments[0:3] = [int(adjustment_total/3)] * 3
-        elif ordered_scores[0] == ordered_scores[1] and ordered_scores[2] == ordered_scores[3]:
-            # 1133
-            all_uma = [round(sum(all_uma[0:2]) / 2)] * 2 + [round(sum(all_uma[2:]) / 2)] * 2
-            adjustments[0:2] = [int(adjustment_total/2)] * 2
-        elif ordered_scores[1] == ordered_scores[2]:
-            #1224
-            all_uma[1:3] = [round(sum(all_uma[1:3]) / 2)] * 2
-        elif ordered_scores[2] == ordered_scores[3]:
-            #1233
-            all_uma[2:] = [round(sum(all_uma[2:]) / 2)] * 2
-        elif ordered_scores[0] == ordered_scores[1]:
-            #1134
-            all_uma[0:2] = [round(sum(all_uma[0:2]) / 2)] * 2
-            adjustments[0:2] = [int(adjustment_total/2)] * 2
-        #1234 - no changes needed
-
-        for idx in range(4):
-
-            net_score = scores[idx] - self.game.rules.starting_points
-            results.net_scores.data_items[idx + 1] = net_score
-
-            uma = all_uma[placement[idx]]
-            results.scoretable_uma.data_items[idx + 1] = uma
-
-            chombos = self.game.rules.chombo_value * self.players[idx].chombo_count
-            results.scoretable_chombos.data_items[idx + 1] = chombos
-
-            adjustment = adjustments[placement[idx]]
-            results.scoretable_adjustments.data_items[idx + 1] = adjustment
-
-            results.scoretable_final_totals.data_items[idx + 1] = \
-                net_score + uma + chombos + adjustment
-
-        self.game.save({
-            'net_scores': results.net_scores.data_items[1:],
-            'uma': results.scoretable_uma.data_items[1:],
-            'chombos': results.scoretable_chombos.data_items[1:],
-            'adjustments': results.scoretable_adjustments.data_items[1:],
-            'final_score': results.scoretable_final_totals.data_items[1:]
-        })
-
-        self.screen_switch('scoresheet')
         self.toggle_buttons()
-        scoretable.scroll_to(results.scoretable_final_totals)
-        self.game.erase()
 
 
     def game_end_userchoice(self, was_draw, game_end):
@@ -452,13 +379,10 @@ class MahjongScorer(App):
         return False
 
 
-    def log(self, log_type, action):
-        '''
-        store audit trail of all relevant events, and eventually store on server too
-        '''
-        timestamp = strftime("%Y-%m-%d %H:%M:%S Z", gmtime())
-        print(timestamp + ' ' + str(action))
-        self.game.game_log.append(timestamp + ' ' + str(action))
+    def log(self, log_type, log_text):
+        ''' store audit trail of all relevant events '''
+        print(log_text)
+        self.game.log_append(log_type, log_text)
 
 
     @staticmethod
@@ -511,6 +435,7 @@ class MahjongScorer(App):
 
 
     def on_config_change(self, config, section, key, value):
+
         if config is not self.config or section != 'main':
             return
 
@@ -534,8 +459,12 @@ class MahjongScorer(App):
             else:
                 self.__end_profiling()
 
-        elif key == 'auth_token':
-            self.auth_token = md5(bytes(value, 'utf-8') + HASH_SALT).hexdigest()
+        elif key == 'register':
+            if self.__auth_button is None:
+                for elem in self.__settings.walk(loopback=True):
+                    if type(elem) == SettingButton:
+                        self.__auth_button = elem
+            Factory.LoginPopup().open()
 
 
     def on_pause(self):
@@ -583,10 +512,49 @@ class MahjongScorer(App):
         self.game_start(names)
 
 
+    def register_device(self, username, password):
+        # TODO give the user some proper feedback as to whether this worked or not
+        token = self.__mjio.authenticate(username, password)
+        self.config.set('main','username', username)
+        self.config.set('main','auth_token', token)
+        self.config.write()
+
+        button_text, setting_text, desc_text = self.registration_text()
+        self.__auth_button.children[0].children[0].children[0].text = button_text
+        self.__auth_button.children[0].children[1].text = (
+            setting_text
+            + '\n[size=13sp][color=999999]'
+            + desc_text
+            + '[/color][/size]'
+            )
+        if token is None:
+            self.set_headline('Device registration failed')
+        else:
+            self.set_headline('Device registered')
+
+
     def register_new_player(self):
         ''' send a new player's details to the server '''
         self.log(Log.ERROR, '#TODO: MahjongScorer.register_new_player not yet coded')
 
+
+    def registration_text(self):
+        if self.__mjio.has_token():
+            return (
+                'Re-register',
+                'Re-register device',
+                '[b]This device is registered[/b]. You can re-register it by'
+                + ' clicking the button'
+                )
+        else:
+            return (
+                'Register',
+                'Register device',
+                '[b]This device is not registered[/b].'
+                + ' Click on the button, then when prompted enter your username'
+                + ' and password for the website. This will register this'
+                + ' device with the server, enabling you to save games there.'
+                )
 
     def screen_back(self):
         current_screen = self.root.ids.manager.current
@@ -670,7 +638,11 @@ class MahjongScorer(App):
         score = result['score']
         self.log(
             Log.SCORE,
-            'Tsumo of hand value %d for %s' % (score, result['winners']))
+            'TSUMO of hand value %d for %s (%s)' % (
+                    score,
+                    self.players[result['winners']].wind,
+                    self.players[result['winners']].player_name
+            ))
         delta1 = self.mj_round(score + 100 * self.game.honba_sticks)
         delta2 = self.mj_round(2 * score + 100 * self.game.honba_sticks)
         if east_is_winner:

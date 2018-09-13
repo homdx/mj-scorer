@@ -6,10 +6,9 @@ class Config(object):
     DEFAULT_PASSWORD = ''
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_DATABASE_URI = 'sqlite:///C:\\temp\\mj.sqlite' # or wherever you want the default sqlite file to live
-    HASH_SALT = b''# a long random string of your choice, used for salting PIN hashes. This must be the same as used for the client app!
-    
+
     # oauth2 logins:
-    
+
     DISCORD_CLIENT_ID = ''
     DISCORD_CLIENT_SECRET = ''
 

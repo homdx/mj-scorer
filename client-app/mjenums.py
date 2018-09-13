@@ -7,11 +7,16 @@ from kivy.app import App
 
 class Log():
 
-    DEBUG = -1
-    INFO = 0
-    SCORE = 1
-    UNUSUAL = 2
-    ERROR = 99
+    DEBUG = {'priority': -1, 'text': 'DBG'}
+    INFO = {'priority': 10, 'text': 'NFO'}
+    CANCEL = {'priority': 20, 'text': 'SCR'}
+    SCORE = {'priority': 30, 'text': 'SCR'}
+    UNUSUAL = {'priority': 80, 'text': 'WAT'}
+    ERROR = {'priority': 99, 'text': 'ERR'}
+
+    def player_text(player_index):
+        player = App.get_running_app().players[player_index]
+        return '%s (%s)' % (player.wind, player.player_name)
 
 
 class Result():

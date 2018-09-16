@@ -10,10 +10,10 @@ This is the main app file. All other client stuff is loaded from here.
 __version__ = '0.3.0'
 
 
-from kivy.config import Config # pylint: disable=wrong-import-order,ungrouped-imports
+from kivy.config import Config
 # These config settings MUST be done before any other modules are loaded
-Config.set('postproc', 'double_tap_distance', '100') # pylint: disable=wrong-import-position
-Config.set('postproc', 'double_tap_time', '650') # pylint: disable=wrong-import-position
+Config.set('postproc', 'double_tap_distance', '100')
+Config.set('postproc', 'double_tap_time', '650')
 
 import cProfile
 from functools import partial
@@ -40,12 +40,11 @@ from mjcomponents import Mjcomponents, SettingButton, SettingPassword
 from mjdb import Mjio
 from mjenums import Log, Result
 from mjgame import MjGameStatus
-from mjplayers import PlayerNames
+from mjplayers import PlayerUI
 from mjscoretable import MjScoreTable
 from mjsettings import settings_json
 from mjwhodidit import Chombo, Draw, Mjwhodidit, MultipleRons, Pao
 from mjui import Mjui
-from salt import HASH_SALT
 
 kivy.require("1.10.0")
 
@@ -60,7 +59,7 @@ class MahjongScorer(App):
     __callback_ref = None
     __chombo = None
     __draw = None
-    __mjio = Mjio()
+    __mjio = None
     __multiplerons = None
     __pao = None
     __popup_help = None
@@ -101,8 +100,8 @@ class MahjongScorer(App):
 
 
     def ask_names(self):
-        self.set_headline("Please enter players' names")
         self.screen_switch('playernames')
+        self.root.ids.mjauto.get_player(1)
 
 
     def ask_to_finish(self):
@@ -122,6 +121,7 @@ class MahjongScorer(App):
 
 
     def build(self):
+        ''' runs after build_config '''
         Config.set('kivy', 'exit_on_escape', '0')
 
         self.title = 'ZAPS Mahjong Scorer'
@@ -132,7 +132,7 @@ class MahjongScorer(App):
         Builder.load_string(MjGameStatus.get_kv())
         Builder.load_string(MjScoreTable.get_kv())
         Builder.load_string(Mjwhodidit.get_kv())
-        Builder.load_string(PlayerNames.get_kv())
+        Builder.load_string(PlayerUI.get_kv())
 
         root = Builder.load_string(Mjui.get_kv())
 
@@ -146,13 +146,21 @@ class MahjongScorer(App):
 
         self.japanese_numbers = self.config.getboolean('main', 'japanese_numbers')
         self.set_wind_labels(self.config.getboolean('main', 'japanese_winds'))
-        self.__mjio.set_token(self.config.get('main', 'auth_token'))
+
+        self.__mjio = Mjio(
+            token=self.config.get('main', 'auth_token'),
+            server_path=self.config.get('main', 'server_path')
+            )
 
         self.bg_colour = self.__get_gb_color(self.config.get('main', 'bg_colour'))
+
+        Clock.schedule_once(lambda dt: self.get_users())
+
         return root
 
 
     def build_config(self, config):
+        ''' runs before build '''
         config.setdefaults('main', {
             'auth_token': '',
             'installation_id': str(time()).replace('.', '').replace(',', '')[-10:],
@@ -161,10 +169,11 @@ class MahjongScorer(App):
             'japanese_winds': True,
             'register': None, # dummy for the register button
             'use_server': False,
+            'user_id': -1,
             'username': '',
+            'server_path': 'https://mj.bacchant.es/',
         })
         config.setdefaults('unused', {
-            'api_path': 'https://mj.bacchant.es/api/v0/',
             'api_store': '',
             'profiling': False,
         })
@@ -278,6 +287,10 @@ class MahjongScorer(App):
 
         self.set_headline('Game on!')
         self.screen_switch('hand')
+
+
+    def get_users(self):
+        self.root.ids.mjauto.ids.txt_input.fill_users_table(self.__mjio.get_users())
 
 
     def hand_end(self, result):
@@ -466,6 +479,10 @@ class MahjongScorer(App):
                         self.__auth_button = elem
             Factory.LoginPopup().open()
 
+        elif key == 'server_path':
+            self.__mjio.set_server(value)
+            self.__mjio.get_users(cache=['clear'])
+
 
     def on_pause(self):
         ''' mobile OS has paused the app '''
@@ -494,7 +511,11 @@ class MahjongScorer(App):
         Window.close()
 
 
-    def randomise_seating(self, randomise):
+    def post_game(self, *args, **kwargs):
+        return self.__mjio.post_game(*args, **kwargs)
+
+
+    def assign_seating(self, randomise):
         '''
         Received user names, so randomise the seating order, and start the game
         '''
@@ -503,34 +524,52 @@ class MahjongScorer(App):
         seating_order = random.sample(range(4), 4) if randomise else (0, 1, 2, 3)
         for player in range(4):
             self.players[player].index = player
-            next_name = self.root.ids['player%dname' % seating_order[player]].text
+            player_label = self.root.ids['player%dname' % seating_order[player]]
+            next_name = player_label.text
             self.players[player].player_name = next_name
-            names.append(next_name)
+            names.append({'name':next_name, 'user_id': player_label.user_id})
             # first column of score table is hand name, so player columns are shifted right by 1
             self.root.ids.score_table.column_headings[player + 1] = next_name
 
         self.game_start(names)
 
 
-    def register_device(self, username, password):
-        # TODO give the user some proper feedback as to whether this worked or not
-        token = self.__mjio.authenticate(username, password)
-        self.config.set('main','username', username)
-        self.config.set('main','auth_token', token)
-        self.config.write()
+    def register_device(self, popup, username, password):
+        popup.ids.status.text='Contacting server...'
+        popup.ids.loginbutton.disabled = True
+        popup.ids.cancelbutton.disabled = True
 
-        button_text, setting_text, desc_text = self.registration_text()
-        self.__auth_button.children[0].children[0].children[0].text = button_text
-        self.__auth_button.children[0].children[1].text = (
-            setting_text
-            + '\n[size=13sp][color=999999]'
-            + desc_text
-            + '[/color][/size]'
-            )
-        if token is None:
-            self.set_headline('Device registration failed')
-        else:
-            self.set_headline('Device registered')
+        def registration_responder(*args):
+            result = self.__mjio.authenticate(username, password)
+            token = result['token']
+            self.config.set('main','username', username)
+            self.config.set('main','auth_token', token)
+
+            button_text, setting_text, desc_text = self.registration_text()
+            self.__auth_button.children[0].children[0].children[0].text = button_text
+            self.__auth_button.children[0].children[1].text = (
+                setting_text
+                + '\n[size=13sp][color=999999]'
+                + desc_text
+                + '[/color][/size]'
+                )
+
+            if token:
+                self.config.set('main','user_id', result['id'])
+                popup.ids.status.text = 'Device registered'
+                Clock.schedule_once(lambda dt: popup.dismiss(), 3)
+                self.get_users()
+            else:
+                print('Failed to authenticate at server: %s' % result['message'])
+                popup.ids.status.text = \
+                    '[size=20sp]Device registration failed\n%s[/size]'% \
+                    result['message']
+                popup.ids.loginbutton.disabled = False
+                popup.ids.cancelbutton.disabled = False
+
+            self.config.write()
+
+        Clock.schedule_once(registration_responder)
 
 
     def register_new_player(self):

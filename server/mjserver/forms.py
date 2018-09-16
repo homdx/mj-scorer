@@ -21,7 +21,6 @@ class MyEmailField(EmailField):
 
     @staticmethod
     def validate_email(form, email):
-        print('in validate_email')
         user = User.query.filter_by(email=email.data).first()
         if user is not None and user is not current_user:
             raise ValidationError('Email already in use. Please use a different one.')

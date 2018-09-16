@@ -158,8 +158,8 @@ class MultipleRons():
 
 
     def go(self):
-        app_root = App.get_running_app()
-        app_root.log(Log.INFO, 'multiple ron')
+        app = App.get_running_app()
+        app.log(Log.INFO, 'multiple ron')
         self.winners = []
         self.result = {
             'result': Result.MULTIPLE_RON,
@@ -218,15 +218,15 @@ class MultipleRons():
 
 
     def get_one_score(self):
-        app_root = App.get_running_app()
-        app_root.root.ids.handscreen.result = {'winners': self.winners[-1]} # needed if we get pao
-        app_root.set_headline(self.__get_headline())
-        app_root.hanfubutton_callback = self.got_one_score
-        app_root.screen_switch('hanfubuttons')
+        app = App.get_running_app()
+        app.root.ids.handscreen.result = {'winners': self.winners[-1]} # needed if we get pao
+        app.set_headline(self.__get_headline())
+        app.hanfubutton_callback = self.got_one_score
+        app.screen_switch('hanfubuttons')
 
 
     def got_one_score(self, score):
-        app_root = App.get_running_app()
+        app = App.get_running_app()
 
         winner = self.winners[-1]
         if isinstance(score, dict):
@@ -235,7 +235,7 @@ class MultipleRons():
         else:
             result = {'winners': winner, 'score': score, 'losers': self.result['losers']}
 
-        score_change = app_root.calculate_ron_scores(result)
+        score_change = app.calculate_ron_scores(result)
 
         for idx in range(4):
             self.result['score'][idx] += score_change[idx]
@@ -244,15 +244,15 @@ class MultipleRons():
 
         if self.winners:
             # there is at least one more winner to get the score of
-            return app_root.deltascore_show(self.result['score'], self.get_one_score)
+            return app.deltascore_show(self.result['score'], self.get_one_score)
 
        # that was the last winner
 
-        self.result['score'][winner] += 10 * app_root.game.riichi_sticks
-        app_root.game.riichi_delta_this_hand[winner] += app_root.game.riichi_sticks
-        app_root.game.riichi_sticks = 0
+        self.result['score'][winner] += 10 * app.game.riichi_sticks
+        app.game.riichi_delta_this_hand[winner] += app.game.riichi_sticks
+        app.game.riichi_sticks = 0
 
-        return app_root.hand_end(self.result)
+        return app.hand_end(self.result)
 
 
     def __get_headline(self):

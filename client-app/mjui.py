@@ -61,8 +61,6 @@ BoxLayout:
         Screen:
             name: 'welcome'
 
-            # PinPad
-            # MJauto
             Helptext
 
             AnchorLayout:
@@ -341,40 +339,28 @@ BoxLayout:
 
         Screen:
             name: 'playernames'
-            on_enter: player0name.focus = True
-            BoxLayout:
+            MJauto:
                 size_hint_y: 0.6
                 pos_hint: {'top': 1}
-                orientation: 'vertical'
+                id: mjauto
 
-                TextInput:
-                    hint_text: 'Player 1 name'
+
+        Screen:
+            name: 'choose_rules'
+
+            BoxLayout:
+                id: playerlist
+                orientation: 'vertical'
+                size_hint_y: 0.6
+                pos_hint: {'top': 1}
+                ScaleLabel:
                     id: player0name
-                    write_tab: False
-                    multiline: False
-                    height: self.minimum_height
-                    focus: True
-                    on_text_validate: player1name.focus = True
-                TextInput:
-                    hint_text: 'Player 2 name'
-                    height: self.minimum_height
-                    write_tab: False
+                ScaleLabel:
                     id: player1name
-                    multiline: False
-                    on_text_validate: player2name.focus = True
-                TextInput:
-                    hint_text: 'Player 3 name'
-                    height: self.minimum_height
+                ScaleLabel:
                     id: player2name
-                    write_tab: False
-                    multiline: False
-                    on_text_validate: player3name.focus = True
-                TextInput:
-                    hint_text: 'Player 4 name'
-                    height: self.minimum_height
+                ScaleLabel:
                     id: player3name
-                    write_tab: False
-                    multiline: False
                 BoxLayout:
                     orientation: 'horizontal'
                     Label:
@@ -396,11 +382,11 @@ BoxLayout:
                         id: allocatebutton
                         font_size: '16sp'
                         text: 'Randomise seating\\n and start game'
-                        on_release: app.randomise_seating(True)
+                        on_release: app.assign_seating(randomise=True)
 
                     Button:
                         id: allocatebutton
                         font_size: '16sp'
                         text: 'Seat in E,S,N,W order\\nand start game'
-                        on_release: app.randomise_seating(False)
+                        on_release: app.assign_seating(randomise=False)
 '''

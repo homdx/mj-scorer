@@ -3,8 +3,7 @@
 The database structure. flask db uses this to auto-generate the db.
 And the server code uses this to operate the db.
 '''
-from datetime import datetime, timedelta
-from hashlib import md5
+from json import loads as json_loads
 import pickle
 import random
 
@@ -70,7 +69,7 @@ class User(db.Model, UserMixin):
 
     @classmethod
     def get_all_usernames(cls):
-        query = db.session.query(cls.username).filter_by(active=True).order_by(cls.username)
+        query = db.session.query(cls.id, cls.username).filter_by(active=True).order_by(cls.username)
         return query.all()
 
     def get_token(self):
@@ -89,7 +88,6 @@ class User(db.Model, UserMixin):
         self.password_hash = generate_password_hash(password)
 
     def set_pin(self, pin):
-        from mjserver.salt import HASH_SALT
         self.pin = pin
 
     def to_dict(self):
@@ -117,12 +115,44 @@ class Game(db.Model):
     public = db.Column(db.Boolean())
     started = db.Column(db.DateTime())
     last_updated = db.Column(db.DateTime())
+    is_active = db.Column(db.Boolean())
 
     players = association_proxy('games_players', 'player')
     player_names = association_proxy('games_players', 'player.username')
     scores = association_proxy('games_players', 'score')
     places = association_proxy('games_players', 'place')
     usersgames = db.relationship('UsersGames')
+
+    def get_score_table(self):
+        hands = json_loads(self.json)['current']
+        return hands
+
+        # taken from client app, for repurposing:
+        self.__score_table.reset()
+        self.__score_table.column_headings[1:] = self.__game_dict['current']['players']
+        self.__score_table.starting_points = self.rules.starting_points
+        for hand in self.__game_dict['current']['hands']:
+            if 'deltas' in hand:
+                self.__score_table.add_row(
+                    hand['deltas'],
+                    hand['dealership'] == 1 and hand['hand_redeals'] == 0
+                )
+        # if there are results, use them
+        if 'net_scores' in self.__game_dict['current']:
+            self.__score_table.ids.net_scores.data_items[1:] = \
+                self.__game_dict['current']['net_scores']
+        if 'uma' in self.__game_dict['current']:
+            self.__score_table.ids.scoretable_uma.data_items[1:] = \
+                self.__game_dict['current']['uma']
+        if 'chombos' in self.__game_dict['current']:
+            self.__score_table.ids.scoretable_chombos.data_items[1:] = \
+                self.__game_dict['current']['chombos']
+        if 'adjustments' in self.__game_dict['current']:
+            self.__score_table.ids.scoretable_adjustments.data_items[1:] = \
+                self.__game_dict['current']['adjustments']
+        if 'final_score' in self.__game_dict['current']:
+            self.__score_table.ids.scoretable_final_totals.data_items[1:] = \
+                self.__game_dict['current']['final_score']
 
 
 #%% slowly working through this http://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html

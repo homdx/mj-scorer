@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Game: {{ profiled.description }}</h1>
+    <table class=sortable>
+        <thead>
+            <tr>
+            <th>Player</th>
+            <th>Placement</th>
+            <th>Score</th>
+        </thead>
+        <tbody>
+            {% for key in profiled.players %}
+                <tr>
+                    <td><a href='{{ url_for('view_profile', user_id=profiled.players[key].id) }}'>{{ profiled.players[key].username }}</a></td>
+                    <td>{{ key }}</td>
+                    <td>{{ profiled.scores[key] }}</td>
+                </td>
+            {% endfor %}
+        </tbody>
+    </table>
+    <pre> {{ hands }}</pre>
+{% endblock %}

@@ -6,13 +6,13 @@ various visual components for the game, and the code to manage them
 from kivy.app import App
 from kivy.animation import Animation
 from kivy.core.text import Label as CoreLabel
-from kivy.properties import BooleanProperty, ListProperty, NumericProperty
+from kivy.properties import BooleanProperty
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.behaviors import FocusBehavior
-from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.recyclegridlayout import RecycleGridLayout
+from kivy.uix.recycleview import RecycleView
 from kivy.uix.recycleview.views import RecycleDataViewBehavior
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
 from kivy.uix.screenmanager import Screen
@@ -75,21 +75,32 @@ class DeltaScoreOverlay(Widget):
         App.get_running_app().delta_overlays.append(self.proxy_ref)
 
 
-class MJTable(BoxLayout):
+class MJTable(RecycleView):
 
-    cols = NumericProperty(0)
-    col_headings = ListProperty([])
+    def scroll_to_index(self, ndx):
+        # this and scroll_to_index are adapted from
+        # https://github.com/Bakterija/log_fruit/blob/dev/src/app_modules/widgets/app_recycleview/recycleview.py
+        if not self._viewport:
+            return
 
+        box = self.children[0]
+        pos_index = (box.default_size[1] + box.spacing[1]) * ndx
+        wheight = box.default_size[1] + box.spacing[1]
+        dy = pos_index - (self.height * 0.5)
+        vp_height = len(box.children) * wheight
 
-    def on_col_headings(self, *args):
-        for idx in range(self.cols):
-            # kivy reverses expected order of children
-            self.ids.header.children[self.cols - 1 - idx].text = self.col_headings[idx]
+        if vp_height > self.height:
+            sh = vp_height - self.height
+            scroll = dy / float(sh)
+        else:
+            scroll = 1
 
+        if scroll > 1.0:
+            scroll = 1.0
+        elif scroll < 0.0:
+            scroll = 0.0
 
-    def on_cols(self, *args):
-        for idx in range(self.cols):
-            self.ids.header.add_widget(ScaleLabel())
+        self.scroll_y = 1.0 - scroll
 
 
 class RiichiStick(Button):
@@ -100,48 +111,48 @@ class RiichiStick(Button):
 
 
     def de_riichi(self, really_deriichi):
-        app_root = App.get_running_app()
+        app = App.get_running_app()
         if really_deriichi:
-            app_root.log(
+            app.log(
                 Log.UNUSUAL,
                 '%s confirmed de-riichi (%s)' % (self.player.wind, self.player.player_name))
-            app_root.log(
+            app.log(
                 Log.SCORE,
                 '%s de-riichi (%s)' % (self.player.wind, self.player.player_name))
             self.visible = 0
             self.player.score += 10
-            app_root.game.riichi_sticks -= 1
-            app_root.game.riichi_delta_this_hand[self.player.index] += 1
-            app_root.set_headline('riichi cancelled')
+            app.game.riichi_sticks -= 1
+            app.game.riichi_delta_this_hand[self.player.index] += 1
+            app.set_headline('riichi cancelled')
 
         else:
-            app_root.log(
+            app.log(
                 Log.DEBUG,
                 '%s (%s) decided not to de-riichi' % (self.player.wind, self.player.player_name))
 
 
     def pressed(self):
-        app_root = App.get_running_app()
+        app = App.get_running_app()
 
-        if not app_root.game.in_progress or app_root.was_double_tap:
+        if not app.game.in_progress or app.was_double_tap:
             return False
 
         if self.visible:
-            app_root.log(
+            app.log(
                 Log.DEBUG,
                 '%s (%s) asked to de-riichi' % (self.player.wind, self.player.player_name))
-            app_root.yesno_popup.angle = self.player.angle
-            app_root.yesno_popup.callback = self.de_riichi
-            app_root.yesno_popup.question = '[b]Are you sure you want to remove your riichi?[/b]'
-            app_root.yesno_popup.true_text = "YES, remove the riichi"
-            app_root.yesno_popup.false_text = "NO, keep the riichi"
-            app_root.yesno_popup.open()
+            app.yesno_popup.angle = self.player.angle
+            app.yesno_popup.callback = self.de_riichi
+            app.yesno_popup.question = '[b]Are you sure you want to remove your riichi?[/b]'
+            app.yesno_popup.true_text = "YES, remove the riichi"
+            app.yesno_popup.false_text = "NO, keep the riichi"
+            app.yesno_popup.open()
         else:
-            app_root.log(Log.SCORE, '%s (%s) riichi' % (self.player.wind, self.player.player_name))
+            app.log(Log.SCORE, '%s (%s) riichi' % (self.player.wind, self.player.player_name))
             self.visible = 1
             self.player.score -= 10
-            app_root.game.riichi_sticks += 1
-            app_root.game.riichi_delta_this_hand[self.player.index] -= 1
+            app.game.riichi_sticks += 1
+            app.game.riichi_delta_this_hand[self.player.index] -= 1
 
         return True
 
@@ -161,11 +172,11 @@ class HandScreen(Screen):
 
     def __get_score(self, msg, result):
         self.result = result
-        app_root = App.get_running_app()
-        app_root.set_headline(msg)
-        app_root.log(Log.INFO, msg)
-        app_root.hanfubutton_callback = self.got_score
-        app_root.screen_switch('hanfubuttons')
+        app = App.get_running_app()
+        app.set_headline(msg)
+        app.log(Log.INFO, msg)
+        app.hanfubutton_callback = self.got_score
+        app.screen_switch('hanfubuttons')
 
 
     def got_score(self, result):
@@ -178,19 +189,19 @@ class HandScreen(Screen):
 
     def on_touch_up(self, touch):
 
-        app_root = App.get_running_app()
-        app_root.was_double_tap = touch.is_double_tap
+        app = App.get_running_app()
+        app.was_double_tap = touch.is_double_tap
 
-        if not app_root.game.in_progress:
+        if not app.game.in_progress:
             return False
 
-        for player in app_root.players:
+        for player in app.players:
             if player.children[0].collide_point(*touch.pos):
                 break
         else:
             return False
 
-        for first_player in app_root.players:
+        for first_player in app.players:
             if first_player.children[0].collide_point(*touch.opos):
                 break
         else:
@@ -225,8 +236,8 @@ class HandScreen(Screen):
                     })
 
             elif touch.time_end - touch.time_start > 2:
-                app_root.log(Log.DEBUG, 'Long press recorded for %s' % player.wind)
-                app_root.set_deltas(player.index, app_root.screen_back())
+                app.log(Log.DEBUG, 'Long press recorded for %s' % player.wind)
+                app.set_deltas(player.index, app.screen_back())
         else:
             self.__get_score(
                 'RON by %s off %s' % (player.wind, first_player.wind),
@@ -343,6 +354,7 @@ class Mjcomponents():
 <Button>:
     halign: 'center'
 
+
 <SettingPassword>
 	PasswordLabel:
 		text: '(stored)' if root.value else '(empty)'
@@ -364,28 +376,19 @@ class Mjcomponents():
 
 
 <MJTable>:
-    orientation: "vertical"
     data_items: []
-
-    GridLayout:
-        id: header
-        size_hint: 1, None
-        height: sp(25)
-        cols: root.cols
-
-    RecycleView:
-        viewclass: 'SelectableButton'
-        data: [{'text': str(x[1])} for x in root.data_items]
-        SelectableRecycleGridLayout:
-            spacing: 0, 10
-            cols: root.cols
-            default_size: None, dp(50)
-            default_size_hint: 1, None
-            size_hint_y: None
-            height: self.minimum_height
-            orientation: 'vertical'
-            multiselect: False
-            touch_multiselect: False
+    viewclass: 'SelectableButton'
+    data: [{'text': str(x[1])} for x in root.data_items]
+    SelectableRecycleGridLayout:
+        spacing: 0, 5
+        cols: 1
+        default_size: None, dp(50)
+        default_size_hint: 1, None
+        size_hint_y: None
+        height: self.minimum_height
+        orientation: 'vertical'
+        multiselect: False
+        touch_multiselect: False
 
 
 <DeltaScoreOverlay>:

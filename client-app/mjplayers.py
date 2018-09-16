@@ -3,18 +3,16 @@
 Get player names, authentication and authorisation
 '''
 
-
-from kivy.properties import NumericProperty, ListProperty, ObjectProperty, StringProperty
+from kivy.app import App
+from kivy.clock import Clock
+from kivy.properties import ListProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.textinput import TextInput
 
-
-WORD_LIST = \
-    [1, 'how to use python'], [2, 'how to use kivy'], [3, 'to'], \
-    [4, 'how to ...'], [5, 'abcdef'], [6, 'defghi'], [7, 'ghijkl']
+from mjcomponents import SelectableButton
 
 
 class AutoComplete_TextInput(TextInput):
@@ -22,55 +20,45 @@ class AutoComplete_TextInput(TextInput):
     auto-complete text box which offers suggestions based on
     substrings of entered text
     '''
-    #txt_input = ObjectProperty()
-    flt_list = ObjectProperty()
-    word_list = ListProperty(WORD_LIST)
+    base_list = []
+    word_list = ListProperty([])
     prepared_word_list = []
-    min_length_to_match = NumericProperty(3)
+    min_length_to_match = 1
 
-    def __init__(self, **kwargs):
-        super(AutoComplete_TextInput, self).__init__(**kwargs)
+
+    def fill_users_table(self, users):
+        self.base_list = users
+        self.word_list = self.base_list
         self.prepared_word_list = []
-        for word in self.word_list:
+        for word in self.base_list:
             self.prepared_word_list.append(self.prepare_string(word[1]))
+
 
     def on_text(self, instance, value):
         # find all the occurrence of the substring
-        #self.parent.ids.rv.data = []
         test = self.prepare_string(value)
         try:
             this_index = self.prepared_word_list.index(test)
         except ValueError:
             this_index = None
             if self.min_length_to_match > len(test):
-                self.word_list = WORD_LIST
+                self.word_list = self.base_list
                 return
 
         self.word_list = []
-        actual_index = None
+        perfect_match_index = None
         for i in range(len(self.prepared_word_list)):
+            # TODO this will get very slow when there's a lot of users
             if test in self.prepared_word_list[i]:
                 if i == this_index:
-                    actual_index = len(self.word_list)
-                self.word_list.append(WORD_LIST[i])
+                    perfect_match_index = len(self.word_list)
+                self.word_list.append(self.base_list[i])
 
+        if perfect_match_index is not None:
+            Clock.schedule_once(
+                lambda dt: self.table.scroll_to_index(perfect_match_index)
+            )
 
-        if actual_index is not None:
-            # then in the next frame, find all SelectableLabel in rv
-            # which is the list
-            # self.parent.rv.children[0].children
-            # find which one contains test (reverse order, as usual for kivy), and select it
-            pass #TODO
-
-    def keyboard_on_key_down(self, window, keycode, text, modifiers):
-        key, key_str = keycode
-        if key in (9, 13, 271):
-            # TODO end it with whatever's selected, or if there's only one item
-            # in list now, pick that
-            print('bang 2')
-        else:
-            return super(AutoComplete_TextInput, self).keyboard_on_key_down(
-                window, keycode, text, modifiers)
 
     @staticmethod
     def prepare_string(value):
@@ -78,10 +66,53 @@ class AutoComplete_TextInput(TextInput):
 
 
 class MJauto(BoxLayout):
-    pass
+
+    __current_player = 0
+
+    def get_player(self, player_number):
+        app = App.get_running_app()
+        SelectableButton.callback = self.got_registered_player
+        self.__current_player = player_number
+        app.set_headline("Select Player %d" % self.__current_player)
+        self.ids.txt_input.focus = True
+        self.ids.casualbutton.disabled = False
+
+
+    def got_registered_player(self, result):
+        player = self.ids.users_table.data_items[result]
+        self.next_player(*player)
+
+
+    def new_player(self, register=False):
+        self.ids.casualbutton.disabled = True
+        name = self.ids.txt_input.text
+        if register:
+            pass # TODO create new registered user
+        else:
+            self.next_player(-self.__current_player, name)
+
+
+    def next_player(self, user_id, name):
+
+        app = App.get_running_app()
+
+        this_player_label = app.root.ids[
+            'player%dname' % (self.__current_player - 1)]
+
+        this_player_label.text = name
+        this_player_label.user_id = user_id
+        self.ids.txt_input.text = ''
+
+        if self.__current_player < 4:
+            app.set_headline(name)
+            Clock.schedule_once(lambda dt: self.get_player(self.__current_player + 1), 1)
+        else:
+            app.set_headline("Hey! Oh! Let's go!")
+            app.screen_switch('choose_rules')
 
 
 class PinButton(Button):
+
     def on_release(self):
         self.parent.parent.press(self.text)
 
@@ -94,11 +125,13 @@ class PinPad(BoxLayout):
     pin = StringProperty('')
     digits = None
 
+
     def ensure_digits(self):
         if self.digits is None:
             self.digits = []
             for child in self.children[1].children:
                 self.digits.insert(0, child)
+
 
     def press(self, keypress):
         self.ensure_digits()
@@ -126,6 +159,7 @@ class PinPad(BoxLayout):
                     self.digits[ndx + 1].in_focus = True
             break
 
+
     def reset(self):
         self.ensure_digits()
         self.pin = ''
@@ -144,7 +178,7 @@ class PinPadPopup(Popup):
         self.callback(pin)
 
 
-class PlayerNames():
+class PlayerUI():
 
     @staticmethod
     def get_kv():
@@ -174,17 +208,32 @@ class PlayerNames():
 
 
 <MJauto>:
-
     orientation: 'vertical'
-    spacing: 2
+    spacing: 0, 2
+    padding: 0
 
     AutoComplete_TextInput:
+        hint_text: 'Enter username, then tap it in the list below'
+        focus: True
         readonly: False
         multiline: False
         id: txt_input
         table: users_table
-        size_hint_y: None
-        height: dp(30)
+        size_hint_y: 0.15
+        height: self.minimum_height
+
+    GridLayout:
+        cols: 2
+        size_hint_y: 0.2
+        Button:
+            id: registerbutton
+            text: 'Register\\nnew player'
+            on_release: root.new_player(register=True)
+            disabled: True
+        Button:
+            id: casualbutton
+            text: "Casual player -\\nDon't register"
+            on_release: root.new_player(register=False)
 
     MJTable:
         id: users_table
@@ -195,17 +244,14 @@ class PlayerNames():
 
 <LoginPopup@Popup>:
 
-    title: 'Register this device'
+    title: 'Register this device to store your games on server'
     auto_dismiss: False
     on_open: username.focus = True
 
     BoxLayout:
-        size_hint: 0.9, 0.5
+        size_hint: 0.9, 0.6
         pos_hint: {'top': 1}
         orientation: 'vertical'
-
-        Label:
-            text: 'By registering this device with the server, your games will be stored there'
 
         TextInput:
             hint_text: "User name as registered"
@@ -214,8 +260,10 @@ class PlayerNames():
             multiline: False
             height: self.minimum_height
             focus: True
+            size_hint_y: 0.18
             on_text_validate: password.focus = True
         TextInput:
+            size_hint_y: 0.18
             hint_text: "Website password"
             id: password
             write_tab: False
@@ -223,17 +271,24 @@ class PlayerNames():
             height: self.minimum_height
             password: True
         Button:
+            size_hint_y: 0.25
             id: loginbutton
-            font_size: '20sp'
+            font_size: '15sp'
             bold: True
             text: 'Login'
-            on_release: root.dismiss() or app.register_device(username.text, password.text)
+            on_release: app.register_device(root, username.text, password.text)
         Button:
+            size_hint_y: 0.25
             id: cancelbutton
-            font_size: '20sp'
+            font_size: '15sp'
             bold: True
             text: 'Cancel'
             on_release: root.dismiss()
+        ScaleLabel:
+            size_hint_y: 0.14
+            id: status
+            markup: True
+            font_size: '40sp'
 
 
 <NewUserPopup@Popup>:
